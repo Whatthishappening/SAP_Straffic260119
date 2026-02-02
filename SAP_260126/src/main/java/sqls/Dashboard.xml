@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.mbc.sap.dao.DashboardDao">
+	<resultMap id="DashboardResultMap" type="com.mbc.sap.dto.DashboardDto">
+    	<result property="linetitle" column="linetitle" />
+    	<result property="linetotal" column="linetotal" />
+    	<result property="stationtotal" column="stationtotal" />
+    	<result property="incident_count" column="incident_count" />
+    	<result property="total_lockers" column="total_lockers" />
+    	<result property="used_lockers" column="used_lockers" />
+    	<result property="hour_usedlocker" column="hour_usedlocker" />
+    	<result property="weekly_issue" column="weekly_issue" />
+    	<result property="station_id" column="station_id"/>
+	</resultMap>
+	
+
+<select id="getdashboard" resultMap="DashboardResultMap">
+        SELECT 
+            /* 1. 제목 및 데이터 기준 ID 설정 */
+            <choose>
+                <when test='auth != null and auth.equals("1")'>
+                    '전 노선 운영현황' AS linetitle,
+                    NULL AS station_id
+                </when>
+                <otherwise>
+                    (SELECT line_name || ' | ' || station_name || ' 운영현황' 
+                     FROM storage.local_amenities 
+                     WHERE station_id = #{station_id} 
+                     LIMIT 1) AS linetitle,
+                    #{station_id} AS station_id
+                </otherwise>
+            </choose>,
+
+            /* 2. 전체 노선 수 및 역 수 (전체 현황용) */
+            (SELECT COUNT(DISTINCT line_name) FROM storage.local_amenities) AS linetotal,
+            (SELECT COUNT(*) FROM storage.local_amenities) AS stationtotal,
+            
+            /* 3. 장애 / 이슈 건수 필터링 */
+            (SELECT COUNT(*) FROM storage.incident 
+             WHERE incident_status IN ('1', '2')
+             <if test='auth != null and auth.equals("2")'>
+                 AND incident_station_id = #{station_id}
+             </if>
+            ) AS incident_count,
+
+            /* 4. 총 물품보관함 개수 필터링 */
+            COALESCE((
+                SELECT SUM(li.local_small + li.local_middle + li.local_large)
+                FROM storage.locker_inventory li
+                <if test='auth != null and auth.equals("2")'>
+                    JOIN storage.local l ON li.local_id = l.local_id
+                    WHERE l.station_id = #{station_id}
+                </if>
+            ), 0) AS total_lockers,
+
+            /* 5. 사용 중인 물품보관함 개수 필터링 */
+            COALESCE((
+                SELECT SUM((li.local_small + li.local_middle + li.local_large) - 
+                           (lu.able_small + lu.able_middle + lu.able_large))
+                FROM storage.locker_inventory li
+                LEFT JOIN (
+                    SELECT DISTINCT ON (local_id) * FROM storage.locker_usage 
+                    ORDER BY local_id, observed_at DESC
+                ) lu ON li.local_id = lu.local_id
+                <if test='auth != null and auth.equals("2")'>
+                    JOIN storage.local l ON li.local_id = l.local_id
+                    WHERE l.station_id = #{station_id}
+                </if>
+            ), 0) AS used_lockers,
+
+            /* 6. 시간대별 사용률(평균) 필터링 */
+            COALESCE((
+                SELECT ROUND(AVG(((li.local_small + li.local_middle + li.local_large) - 
+                                  (lu.able_small + lu.able_middle + lu.able_large))::numeric / 
+                                 NULLIF((li.local_small + li.local_middle + li.local_large), 0) * 100), 1)
+                FROM storage.locker_inventory li
+                JOIN (
+                    SELECT DISTINCT ON (local_id) * FROM storage.locker_usage 
+                    ORDER BY local_id, observed_at DESC
+                ) lu ON li.local_id = lu.local_id
+                <if test='auth != null and auth.equals("2")'>
+                    JOIN storage.local l ON li.local_id = l.local_id
+                    WHERE l.station_id = #{station_id}
+                </if>
+            ), 0) AS hour_usedlocker,
+
+            /* 7. 최근 7일 장애 발생 현황 필터링 */
+            (SELECT COUNT(*) FROM storage.incident 
+             WHERE create_at >= CURRENT_DATE - INTERVAL '7 days'
+             <if test='auth != null and auth.equals("2")'>
+                 AND incident_station_id = #{station_id}
+             </if>
+            ) AS weekly_issue
+    </select>
+</mapper>
+
+
+
