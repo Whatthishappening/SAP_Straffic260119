@@ -34,7 +34,7 @@
 
         <div class="header-info-row">
           <div class="sub-nav-text">
-            <span class="dot">●</span> 실시간 관리 시스템 접속 중 : {{ userData.line_name }}호선 모니터링
+            <span class="dot">●</span> 실시간 관리 시스템 접속 중 : {{ userData.line_name }} 모니터링
           </div>
         </div>
       </div>
@@ -46,17 +46,19 @@
           <div class="nav-item" @click="currentView = 'Home'" :class="{ active: currentView === 'Home' }">▶대시보드</div>
           <div class="nav-item" @click="currentView = 'statusstation'" :class="{ active: currentView === 'statusstation' }">▶역별현황</div>
           <div class="nav-item" @click="currentView = 'analysis'" :class="{ active: currentView === 'analysis' }">▶통계 분석</div>
-          <div class="nav-item" @click="currentView = 'Issue'" :class="{ active: currentView === 'Issue' }">▶장애/이슈</div>
+          <div class="nav-item" @click="currentView = 'insident'" :class="{ active: currentView === 'insident' }">▶장애/이슈</div>
           <div class="nav-item" @click="currentView = 'management'" :class="{ active: currentView === 'management' }">▶사용자 관리</div>
         </nav>
       </aside>
 
       <main class="content">
-        <component 
-          :is="views[currentView]" 
-          :key="currentView" 
-          @change-view="currentView = $event" />
-      </main>
+      <component 
+       :is="views[currentView]" 
+       :key="currentView" 
+       :data="selectedIncidentId"  @change-view="handleViewChange" @go-create="currentView = 'Createinsident'" 
+       @go-list="currentView = 'insident'"
+       />
+    </main>
     </div>
 
     <footer class="footer">
@@ -64,10 +66,13 @@
         <img :src="logofooter" alt="footer logo" class="footer-inline-logo" />
         <span class="copyright">
           <table>
+            <thead></thead>
+            <tbody>
             <tr><td>배영환 | Project Manger | uee8351773@naver.com</td></tr>
             <tr><td>김소연 | Consultant | www.linkedin.com/in/souyeon-kim-735996394</td></tr>
             <tr><td>송원호 | Developer | dnjsghman@naver.com</td></tr>
             <tr><td>오창석 | Developer | dhckdtjr11@naver.com</td></tr>
+         </tbody>
           </table>
         </span>
       </div>
@@ -87,10 +92,15 @@ import Login from './views/LoginView.vue';
 import Regi from './views/regi.vue';
 import myedit from './views/myedit.vue';
 import my from './views/my.vue';
+import insident from './views/insident.vue';
+import Createinsident from './views/Createinsident.vue';
+import IssueDetail from './views/IssueDetail.vue';
 
-const views = { Home, statusstation, management, Login, Regi , myedit, my };
+const views = { Home, statusstation, management, Login, Regi , myedit, my, insident,Createinsident,IssueDetail};
 const currentView = ref('Login');
 const isLoggedIn = ref(false);
+const selectedIncidentId = ref(null); // 추가: 선택된 ID 저장용
+
 
 const userData = reactive({
   id: '',
@@ -98,6 +108,15 @@ const userData = reactive({
   line_name: 'default',
   station_name: ''
 });
+// 뷰 변경 핸들러 수정
+const handleViewChange = (viewName, payload) => {
+  currentView.value = viewName;
+  
+  // payload가 넘어오면(ID 값) 저장해둡니다.
+  if (payload !== undefined) {
+    selectedIncidentId.value = payload;
+  }
+};
 
 const applyUserData = (payload) => {
   if (!payload) return;
@@ -264,4 +283,5 @@ body { overflow-y: auto; overflow-x: hidden; min-height: 100vh; }
   padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px;
 }
 .header-mypageimage { width: 32px; height: 32px; border-radius: 50%; margin-left: 10px; vertical-align: middle; }
+
 </style>

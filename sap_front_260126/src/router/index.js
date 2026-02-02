@@ -7,6 +7,9 @@ import statusstation from '../views/statusstation.vue'
 import regi from '../views/regi.vue'
 import my from '../views/my.vue'
 import myedit from '../views/myedit.vue'
+import insident from '../views/insident.vue'
+import Createinsident from '../views/Createinsident.vue'
+import IssueDetail from '../views/IssueDetail.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -26,7 +29,7 @@ const router = createRouter({
       component: statusstation
     },
     { 
-      path: '/user/ reg', 
+      path: '/user/reg', 
       name: 'regi', 
       component: regi
     },
@@ -39,8 +42,17 @@ const router = createRouter({
        path: '/user/my/edit', 
       name: 'myedit', 
       component: myedit
-    }
+    },
+    { path: '/user/insident', 
+      name: 'insident', 
+      component: insident },
+    { path: '/user/insident/create', 
+      name: 'Createinsident', 
 
+      component: IssueDetail },
+      { path: '/user/insident/issueDetail', 
+      name: 'IssueDetail', 
+      component: IssueDetail } 
   ]
 })
 
