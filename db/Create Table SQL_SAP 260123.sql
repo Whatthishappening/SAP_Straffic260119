@@ -60,6 +60,11 @@ select * from storage.local_amenities;
 
 select * from storage.locker_usage order by locker_usage.created_at desc
 
+select * from storage.user;
+--update storage.user set auth = 1 where user_name = '배영환';
+
+insert 
+
 -- 유저 테이블 생성
 -- CREATE TABLE storage.user(
 -- 	user_id				VARCHAR(20)		primary key,
