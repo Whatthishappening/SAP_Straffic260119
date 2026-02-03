@@ -94,6 +94,8 @@
 import { ref, computed, onMounted, nextTick } from 'vue';
 import axios from 'axios';
 import Chart from 'chart.js/auto';
+// 데이터 레이블 플러그인 임포트
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 
 const dashboardData = ref(null);
 const userLine = ref(""); 
@@ -101,15 +103,11 @@ const userAuth = ref("");
 const hasWeeklyData = ref(false); 
 let chartInstances = {};
 
-// [이미지 경로 로직 수정] 
-// assets/Line/Line1.png ~ Lineall.png 구조 대응
 const getLineImage = () => {
-  let fileName = "Lineall.png"; // 기본값 (마스터용)
-  
+  let fileName = "Lineall.png";
   if (userAuth.value === "2" && userLine.value) {
     fileName = `Line${userLine.value}.png`;
   }
-  
   return new URL(`../assets/Line/${fileName}`, import.meta.url).href;
 };
 
@@ -131,7 +129,17 @@ const currentRate = computed(() => {
 
 const initCharts = () => {
   Object.values(chartInstances).forEach(instance => instance.destroy());
-  const donutOpt = { cutout: '70%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+  
+  // 기본 도넛 차트 옵션 (데이터 레이블 비활성화)
+  const donutOpt = { 
+    cutout: '70%', 
+    responsive: true, 
+    maintainAspectRatio: false, 
+    plugins: { 
+      legend: { display: false },
+      datalabels: { display: false } // 도넛 차트에는 숫자를 숨김
+    } 
+  };
 
   const ctx1 = document.getElementById('totalStorageChart')?.getContext('2d');
   if (ctx1) chartInstances.total = new Chart(ctx1, { type: 'doughnut', data: { datasets: [{ data: [1, 0], backgroundColor: ['#4BC0C0', '#f2f2f2'], borderWidth: 0 }] }, options: donutOpt });
@@ -147,10 +155,69 @@ const initCharts = () => {
   if (ctxHourly) {
     const rate = currentRate.value;
     const chartData = dashboardData.value?.hourlyData || [rate-5, rate-2, rate+5, rate+10, rate+2, rate];
+    
     chartInstances.hourly = new Chart(ctxHourly, {
       type: 'line',
-      data: { labels: ['08시', '11시', '14시', '17시', '20시', '23시'], datasets: [{ label: '사용률 (%)', data: chartData, borderColor: '#36A2EB', fill: true, backgroundColor: 'rgba(54, 162, 235, 0.1)', tension: 0.4 }] },
-      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+      plugins: [ChartDataLabels], // 플러그인 추가
+      data: { 
+        labels: ['08시', '11시', '14시', '17시', '20시', '23시'], 
+        datasets: [{ 
+          label: '사용률 (%)', 
+          data: chartData, 
+          borderColor: '#36A2EB', 
+          fill: true, 
+          backgroundColor: 'rgba(54, 162, 235, 0.1)', 
+          tension: 0.4,
+          pointRadius: 5,           // 점 크기 확대
+          pointBackgroundColor: '#36A2EB'
+        }] 
+      },
+      options: { 
+        responsive: true, 
+        maintainAspectRatio: false, 
+        scales: { 
+          y: { 
+            beginAtZero: true, 
+            min: 0,
+            max: 100,              // 상단 레이블 공간 확보
+            ticks: { 
+              display: true,       // Y축 숫자를 다시 보이게 설정
+              stepSize: 20,
+              callback: (value) => {
+                if(value <= 100) return value + '%';
+                return '';
+              }
+            },
+            grid: { 
+              display: true,       // 가로 가이드라인 표시
+              color: 'rgba(0, 0, 0, 0.05)' 
+            },
+            title: {               // Y축 제목 추가 (선택 사항)
+              display: false,
+              text: '사용률 (%)',
+              font: { size: 11 }
+            }
+          },
+          x: { 
+            grid: { display: false } 
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          datalabels: {
+            display: true,
+            align: 'top',
+            anchor: 'end',
+            offset: 4,
+            color: '#36A2EB',
+            font: {
+              size: 12,
+              weight: 'bold'
+            },
+            formatter: (value) => value + '%'
+          }
+        }
+      }
     });
   }
 };
@@ -164,7 +231,6 @@ const fetchData = async () => {
       userAuth.value = String(user.auth);
       s_id = user.station_id;
       if (userAuth.value === "2" && s_id) {
-        // 호선 추출 (역코드 첫자리)
         userLine.value = String(s_id).charAt(0);
       }
     }
@@ -178,7 +244,6 @@ onMounted(fetchData);
 </script>
 
 <style scoped>
-/* 사용자님 CSS 원본 그대로 유지 */
 .dashboard-container { padding: 30px; background: #f4f7fa; min-height: 100vh; font-family: 'Pretendard', sans-serif; }
 .dashboard-header { margin-bottom: 25px; padding-left: 10px; }
 .dashboard-header h1 { font-size: 28px; font-weight: 800; color: #1a2a3a; margin: 0; }
@@ -190,25 +255,22 @@ onMounted(fetchData);
 .chart-box.big-chart { width: 110px; height: 110px; margin-bottom: 8px; position: relative; }
 .chart-bottom-text.big-text { font-size: 20px; font-weight: 800; color: #222; }
 .used-color { color: #36A2EB; }
-.issue-icon-big { width: 110px; height: auto; margin-bottom: 5px; }
-.error-count-big { font-size: 40px; font-weight: 900; color: #d32f2f; line-height: 1; }
-.unit-big { font-size: 18px; font-weight: 700; color: #d32f2f; margin-left: 3px; }
+.issue-icon-big { width: 110px; height: auto; margin-bottom: 17px; }
+
+/* 장애 발생 건수 텍스트 위치 미세 조정 반영 */
+.error-count-big { font-size: 30px; font-weight: 900; color: #d32f2f; line-height: 1; padding-top: 4px; }
+.unit-big { font-size: 20px; font-weight: 700; color: #d32f2f; margin-left: 3px;}
+
 .contact-list-big { list-style: none; padding: 0; font-size: 16px; line-height: 1.6; text-align: left; }
 .v-divider { width: 1.5px; height: 120px; background: #eee; margin: 0 10px; }
 .middle-widgets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; }
 .card { background: #fff; padding: 25px; border-radius: 18px; height: 480px; box-shadow: 0 5px 15px rgba(0,0,0,0.04); display: flex; flex-direction: column; }
 .card h3 { font-size: 19px; font-weight: 700; margin-bottom: 20px; color: #333; border-left: 5px solid #36A2EB; padding-left: 12px; }
 .canvas-wrapper { height: 360px; width: 100%; position: relative; }
-
-/* 이미지 영역 스타일 */
 .iframe-mask { flex: 1; position: relative; overflow: hidden; border-radius: 12px; border: 1px solid #eee; background: #fff; }
 .image-display-container { display: flex; justify-content: center; align-items: center; cursor: pointer; }
-.route-map-img-fixed { width: 100%; height: 100%; object-fit: contain; }
-.hover-info { 
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-  background: rgba(0,0,0,0.4); color: #fff; display: flex; 
-  align-items: center; justify-content: center; opacity: 0; transition: 0.3s; font-weight: bold; 
-}
+.route-map-img-fixed { width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.hover-info { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); color: #fff; display: flex; align-items: center; justify-content: center; opacity: 0; transition: 0.3s; font-weight: bold; }
 .image-display-container:hover .hover-info { opacity: 1; }
 .no-data-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #f9f9f9; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 14px; border-radius: 12px; }
 </style>
