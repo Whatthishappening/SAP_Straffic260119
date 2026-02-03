@@ -70,6 +70,44 @@ public class IncidentController {
      
      return dto;
  }
+ //장애 이슈 정보 업데이트 
+ @PostMapping("update_incident") 
+ public String update_user(@RequestBody IncidentDto dto) {
+    
+     System.out.println("전달받은 데이터 확인: " + dto.toString()); 
+     
+     boolean isS = service.update_incident(dto);
+     
+     if(isS) {
+         return "YES";
+     } else {
+         return "NO";
+     }
+ }
+ //장애 이슈 진행 상태 업데이트
+ @PostMapping("update_incident_status") 
+ public String update_incident_status(@RequestBody IncidentDto dto) {
+    
+     System.out.println("전달받은 데이터 확인: " + dto.toString()); 
+     
+     boolean isS = service.update_incident_status(dto);
+     
+     if(isS) {
+         return "YES";
+     } else {
+         return "NO";
+     }
+ }
+ 
+ // 단체 리스트 수정하기
+ @PostMapping("update_incident_statusBatch")
+ public String approveUsersBatch(@RequestBody Map<String, Object> params) {
+     System.out.println("일괄 수정 요청 발생: " + params);
+     
+     boolean isSuccess = service.update_incident_statusBatch(params); 
+     
+     return isSuccess ? "YES" : "NO";
+ }
  
  
 }

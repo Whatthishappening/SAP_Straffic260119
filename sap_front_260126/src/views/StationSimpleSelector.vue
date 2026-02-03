@@ -88,15 +88,26 @@ const onInputSync = (e) => {
   tempFilters.station_id = '';
   tempFilters.station_name = '';
 };
-
+const searchPreviewList = computed(() => {
+  const query = tempFilters.stationSearch.trim();
+  if (!query) return [];
+  
+  // 역 이름에 검색어가 포함된 데이터만 필터링 (최대 10개만 표시 등 제한 가능)
+  return allStationData.value.filter(st => 
+    st.station_name.includes(query)
+  ).slice(0, 10); // 너무 많으면 성능 저하 및 UI 깨짐 방지
+});
 // 역 선택 시 (내부 데이터만 업데이트하고 메뉴는 닫지 않음)
 const selectStation = (st) => {
+// 1. 데이터 입력
   tempFilters.stationSearch = st.station_name;
   tempFilters.station_name = st.station_name;
   tempFilters.line = st.line_name;
   tempFilters.station_id = st.station_id;
-  showResults.value = false; // 자동완성 리스트만 닫음
-  // sendToParent(); <--- 이 부분을 지웠습니다!
+ // 2. 검색창 닫기
+  showResults.value = false;
+  // 3. 선택하자마자 바로 부모에게 보냄
+  confirmSelection();
 };
 
 // 호선 클릭 시 (내부 데이터만 업데이트)
@@ -123,12 +134,12 @@ const resetLocalFilters = () => {
   showResults.value = false;
 };
 
-// 오직 이 함수가 호출될 때만 부모에게 데이터가 날아갑니다!
+
 const confirmSelection = () => {
   emit('selected', {
     line_name: tempFilters.line,
     station_name: tempFilters.station_name || '', 
-    station_id: tempFilters.station_id || ''      
+    station_id: tempFilters.station_id || ''       
   });
 };
 const getLineColor = (line) => {

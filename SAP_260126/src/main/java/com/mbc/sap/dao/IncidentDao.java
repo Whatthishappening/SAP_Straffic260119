@@ -1,6 +1,7 @@
 package com.mbc.sap.dao;
 
 import java.util.List;
+import java.util.Map;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.springframework.stereotype.Repository;
@@ -19,5 +20,10 @@ public interface IncidentDao {
 	int count_incident(Incidentparam param);
 
 	IncidentDto get_incident_detail(String incidentd_id);
+
+	int update_incident(IncidentDto dto);
+
+	int update_incident_status(IncidentDto dto);
+	int update_incident_statusBatch(Map<String, Object> params);
 
 }

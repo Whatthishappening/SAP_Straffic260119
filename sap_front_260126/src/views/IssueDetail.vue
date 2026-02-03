@@ -1,27 +1,57 @@
 <template>
   <div class="detail-container">
     <div class="main-content">
-      
       <div class="detail-header">
         <h2 class="detail-title">
           <span class="status-text" :class="getStatusClass(issueData.incident_status)">
             [{{ getStatusLabel(issueData.incident_status) }}]
           </span> 
-          {{ issueData.incident_title || '불러오는 중...' }}
+          <input 
+            v-if="Edit_titleMode" 
+            v-model="issueData.incident_title" 
+            class="edit-title-input"
+            placeholder="제목을 입력하세요"
+          />
+          <span v-else>{{ issueData.incident_title || '불러오는 중...' }}</span>
         </h2>
         <div class="detail-meta">
           # by <strong>{{ issueData.user_name }}</strong> reported at {{ issueData.create_at || '최근' }}
+          
+          <div class="header-actions-inline">
+            <template v-if="!Edit_titleMode">
+              <button class="action-link" @click="Edit_titleMode = true">✏️제목수정</button>
+            </template>
+            <template v-else>
+              <button class="action-link save" @click="update_issueDetail">저장</button>
+              <button class="action-link cancel" @click="Edit_titleMode = false">취소</button>
+            </template>
+          </div>
         </div>
       </div>
 
       <div class="incident-main-content">
         <div class="comment-item original-post">
           <div class="comment-header">
-            <span class="comment-author">📝 상세 내용</span>
-            <span class="comment-date">ID: {{ issueData.incident_id }}</span>
+            <span class="comment-author">상세 내용</span>
+            <div class="header-actions">
+              <template v-if="!isEditMode">
+                <button class="action-link" @click="isEditMode = true">✏️본문편집</button>
+              </template>
+              <template v-else>
+                <button class="action-link save" @click="update_issueDetail">저장</button>
+                <button class="action-link cancel" @click="isEditMode = false">취소</button>
+              </template>
+            </div>
           </div>
           <div class="comment-body">
-            {{ issueData.incident_content || '내용이 없습니다.' }}
+            <textarea 
+              v-if="isEditMode" 
+              v-model="issueData.incident_content" 
+              class="edit-textarea"
+            ></textarea>
+            <div v-else class="content-text">
+              {{ issueData.incident_content || '내용이 없습니다.' }}
+            </div>
           </div>
         </div>
       </div>
@@ -29,37 +59,68 @@
       <div class="comment-list">
         <div v-for="(comment, index) in comments" :key="index" class="comment-item">
           <div class="comment-header">
-            <span class="comment-author">{{ comment.user }}</span>
-            <span class="comment-date">{{ comment.time }}</span>
-            <div class="comment-actions">
-              <button class="action-btn edit">✏️편집</button>
-              <button v-if="comment.isMine" class="action-btn delete">🗑️삭제</button>
+            <div class="header-left">
+              <span class="comment-author">{{ comment.user_name }} ({{ comment.user_id }})</span>
+              <span class="comment-date">{{ comment.create_at }}</span>
+            </div>
+            
+            <div class="header-actions">
+              <template v-if="editingCommentId !== comment.comment_id">
+                <button class="action-link" @click="startEdit(comment)">✏️</button>
+                <button class="action-link delete" @click="deleteComment(comment.comment_id)">🗑️</button>
+              </template>
+              <template v-else>
+                <button class="action-link save" @click="saveEdit(comment.comment_id)">저장</button>
+                <button class="action-link cancel" @click="cancelEdit">취소</button>
+              </template>
             </div>
           </div>
+
           <div class="comment-body">
-            {{ comment.content }}
+            <textarea 
+              v-if="editingCommentId === comment.comment_id" 
+              v-model="editContent" 
+              class="edit-comment-textarea"
+            ></textarea>
+            <div v-else class="comment-text-content">{{ comment.comment_content }}</div>
           </div>
         </div>
       </div>
 
       <div class="comment-input-section">
         <textarea v-model="newComment" placeholder="댓글을 입력하세요..." class="comment-textarea"></textarea>
+        
         <div class="button-group">
-          <button class="status-btn">상태변경</button>
+          <div class="status-change-wrapper">
+            <div v-if="activeMenu === 'status'" class="dropdown-menu status-dropdown">
+              <div v-for="(label, value) in statusMap" 
+                   :key="value" 
+                   class="menu-item" 
+                   @click.stop="selectStatus(value)">
+                {{ label }}
+              </div>
+            </div>
+            <button class="update-btn" @click.stop="toggleMenu('status')">진행 상태변경</button>
+          </div>
           <button class="submit-btn" @click="addComment">댓글작성</button>
         </div>
       </div>
     </div>
-    <aside class="sidebar">
+
+    <aside class="sidebar" ref="sideContainer">
       <section class="sidebar-section">
         <div class="sidebar-header">
           <span>심각도</span>
-          <button class="settings-icon">⚙️</button>
+          <button class="settings-icon" @click.stop="toggleMenu('severity')">⚙️</button>
+        </div>
+        <div v-if="activeMenu === 'severity'" class="dropdown-menu">
+          <div v-for="lv in ['Critical', 'Major', 'Minor']" :key="lv" 
+               class="menu-item" :class="lv.toLowerCase()" @click="selectSeverity(lv)">
+            {{ lv }}
+          </div>
         </div>
         <div class="sidebar-content">
-          <span v-if="issueData.incident_severity" 
-                class="badge severity" 
-                :class="issueData.incident_severity.toLowerCase()">
+          <span v-if="issueData.incident_severity" class="badge severity" :class="issueData.incident_severity.toLowerCase()">
             {{ issueData.incident_severity }}
           </span>
         </div>
@@ -68,13 +129,14 @@
       <section class="sidebar-section">
         <div class="sidebar-header">
           <span>분류 및 위치</span>
-          <button class="settings-icon">⚙️</button>
+          <button class="settings-icon" @click.stop="toggleMenu('location')">⚙️</button>
+        </div>
+        <div v-if="activeMenu === 'location'" class="dropdown-menu location-picker-simple">
+          <StationSimpleSelector @selected="onStationSelected" />
         </div>
         <div class="sidebar-content">
-          <div class="badge-row">
-            <span v-if="issueData.incident_line_name" 
-                  class="badge display-box" 
-                  :class="'line-' + issueData.incident_line_name">
+          <div class="badge-row" v-if="issueData.incident_line_name">
+            <span class="badge display-box" :class="'line-' + issueData.incident_line_name.replace(' ', '')">
               {{ issueData.incident_line_name }}
             </span>
             <span v-if="issueData.incident_station_name" class="badge station">
@@ -92,12 +154,21 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import { ref, onMounted, onUnmounted } from 'vue';
+import axios from 'axios';
+import StationSimpleSelector from './StationSimpleSelector.vue';
 
 const props = defineProps({
   data: [Number, String]
 });
+
+const activeMenu = ref(null);
+const isEditMode = ref(false);
+const Edit_titleMode = ref(false); // 제목 편집 모드 추가
+const newComment = ref('');
+const comments = ref([]);
+const editingCommentId = ref(null);
+const editContent = ref('');
 
 const issueData = ref({
   incident_id: '',
@@ -106,148 +177,199 @@ const issueData = ref({
   incident_severity: '',
   incident_line_name: '',
   incident_station_name: '',
+  incident_station_id: '',
   incident_content: '',
   user_name: '',
   user_id: '',
   create_at: ''
 });
 
-const newComment = ref('')
-const comments = ref([
-  { user: 'BaeYoungHwan', time: '5 hours ago', content: '현장 확인이 필요합니다.', isMine: false },
-])
+const statusMap = { '1': '대기', '2': '해결중', '3': '완료', '4': '비활성화' };
+
+const loadComments = () => {
+  if (!props.data) return;
+  axios.post("http://localhost:9000/get_comments", { incident_id: props.data })
+    .then(resp => { comments.value = resp.data; })
+    .catch(err => console.error("댓글 로딩 실패:", err));
+};
+
+const loadDetail = () => {
+  if (!props.data) return;
+  axios.post("http://localhost:9000/get_incident_detail", { incident_id: props.data })
+    .then(resp => { if (resp.data) issueData.value = resp.data; })
+    .catch(err => console.error("상세 로드 실패:", err));
+};
 
 onMounted(() => {
-  const incidentId = props.data;
-  if (incidentId) {
-    // 쿼리 파라미터가 아닌 Body 데이터로 전송 (PostgreSQL 캐스팅 문제 해결 완료 가정)
-    axios.post("http://localhost:9000/get_incident_detail", {
-      incident_id: incidentId
-    })
-    .then(resp => {
-      console.log("서버 데이터 로드 완료:", resp.data);
-      if (resp.data) {
-        issueData.value = resp.data;
-      }
-    })
-    .catch(err => {
-      console.error("로딩 실패:", err);
-      alert("데이터를 가져오는 중 오류가 발생했습니다.");
-    });
-  }
+  loadDetail();
+  loadComments();
+  window.addEventListener('mousedown', handleClickOutside);
 });
 
-const getStatusLabel = (s) => ({ '1': '대기', '2': '해결중', '3': '완료' }[s] || '알수없음')
-const getStatusClass = (s) => ({ '1': 'wait', '2': 'resolving', '3': 'done' }[s] || '')
+onUnmounted(() => {
+  window.removeEventListener('mousedown', handleClickOutside);
+});
+
+const update_issueDetail = () => {
+  axios.post('http://localhost:9000/update_incident', issueData.value)
+    .then(resp => {
+      if (resp.data === "YES" || resp.data === 1) {
+        alert("저장되었습니다.");
+        isEditMode.value = false;
+        Edit_titleMode.value = false;
+        loadDetail();
+      }
+    }).catch(() => alert("저장 실패"));
+};
 
 const addComment = () => {
-  if(!newComment.value.trim()) return
-  comments.value.push({
-    user: '현장관리자',
-    time: '방금 전',
-    content: newComment.value,
-    isMine: true
-  })
-  newComment.value = ''
-}
+  if (!newComment.value.trim()) return;
+
+  // App.vue와 동일한 세션 키 'user_info' 사용
+  const loginData = JSON.parse(sessionStorage.getItem("user_info"));
+
+  if (!loginData) {
+    alert("로그인이 필요합니다.");
+    return;
+  }
+
+  const payload = {
+    incident_id: Number(issueData.value.incident_id), 
+    comment_content: newComment.value,
+    user_id: loginData.user_id || loginData.id,
+    user_name: loginData.user_name || loginData.name
+  };
+
+  axios.post('http://localhost:9000/insert_comment', payload)
+    .then(resp => {
+      if (resp.data === "YES" || resp.data === 1) {
+        newComment.value = '';
+        loadComments();
+      }
+    });
+};
+
+const deleteComment = (commentId) => {
+  if (!confirm("정말 삭제하시겠습니까?")) return;
+  axios.post("http://localhost:9000/delete_comment", { comment_id: commentId })
+    .then(() => { loadComments(); });
+};
+
+const startEdit = (comment) => {
+  editingCommentId.value = comment.comment_id;
+  editContent.value = comment.comment_content;
+};
+
+const cancelEdit = () => {
+  editingCommentId.value = null;
+  editContent.value = '';
+};
+
+const saveEdit = (commentId) => {
+  axios.post("http://localhost:9000/update_commentContent", {
+    comment_id: commentId,
+    comment_content: editContent.value
+  }).then(() => {
+    editingCommentId.value = null;
+    loadComments();
+  });
+};
+
+const selectStatus = (val) => {
+  issueData.value.incident_status = String(val);
+  activeMenu.value = null;
+  axios.post('http://localhost:9000/update_incident_status', {
+    incident_id: issueData.value.incident_id,
+    incident_status: issueData.value.incident_status
+  }).then(() => { alert('상태 변경 완료'); loadDetail(); });
+};
+
+const selectSeverity = (lv) => { issueData.value.incident_severity = lv; activeMenu.value = null; update_issueDetail(); };
+
+const onStationSelected = (data) => {
+  issueData.value.incident_line_name = data.line_name;
+  issueData.value.incident_station_name = data.station_name;
+  issueData.value.incident_station_id = data.station_id;
+  activeMenu.value = null;
+  update_issueDetail();
+};
+
+const toggleMenu = (type) => { activeMenu.value = activeMenu.value === type ? null : type; };
+const handleClickOutside = (e) => {
+  if (!e.target.closest('.status-change-wrapper') && !e.target.closest('.settings-icon') && !e.target.closest('.dropdown-menu')) {
+    activeMenu.value = null;
+  }
+};
+
+const getStatusLabel = (s) => (statusMap[s] || '알수없음');
+const getStatusClass = (s) => ({ '1': 'wait', '2': 'resolving', '3': 'done' }[s] || '');
 </script>
 
 <style scoped>
-.detail-container {
-  display: flex;
-  width: 95%;
-  max-width: 1400px;
-  margin: 20px auto;
-  gap: 30px; /* 메인과 사이드바 간격 */
-  font-family: 'Pretendard', sans-serif;
-  color: #24292e;
-}
+/* 레이아웃 */
+.detail-container { display: flex; width: 95%; max-width: 1400px; margin: 20px auto; gap: 30px; font-family: 'Pretendard', sans-serif; }
+.main-content { flex: 3; min-width: 0; }
 
-.main-content {
-  flex: 3; /* 3:1 비율 */
-  min-width: 0;
-}
+/* 헤더 & 제목 입력창 */
+.detail-header { margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #d1d5da; }
+.detail-title { font-size: 26px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+.edit-title-input { font-size: 24px; padding: 5px 10px; border: 2px solid #2188ff; border-radius: 6px; flex: 1; }
+.detail-meta { margin-top: 10px; color: #586069; font-size: 14px; display: flex; align-items: center; gap: 15px; }
+.header-actions-inline { display: flex; gap: 8px; }
 
-/* 게시글 헤더 스타일 */
-.detail-header {
-  margin-bottom: 25px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #d1d5da;
-}
-.detail-title { font-size: 26px; font-weight: 600; margin-bottom: 10px; }
-.status-text.resolving { color: #2188ff; }
-.status-text.wait { color: #6a737d; }
-.status-text.done { color: #28a745; }
-.detail-meta { color: #586069; font-size: 14px; }
+/* 버튼 및 액션 */
+.action-link { background: none; border: none; cursor: pointer; color: #586069; font-size: 13px; font-weight: 600; padding: 2px 5px; }
+.action-link:hover { text-decoration: underline; }
+.action-link.save { color: #28a745; }
+.action-link.cancel { color: #d73a49; }
+.action-link.delete { color: #cb2431; }
 
-/* 본문 및 댓글 스타일 공통 */
-.incident-main-content { margin-bottom: 30px; }
-.comment-list { display: flex; flex-direction: column; gap: 15px; }
-.comment-item {
-  border: 1px solid #d1d5da;
-  border-radius: 6px;
-  background: white;
-  overflow: hidden;
-}
+/* 본문 편집 */
+.edit-textarea { width: 100%; min-height: 200px; padding: 15px; border: 2px solid #2188ff; border-radius: 6px; resize: vertical; font-size: 15px; line-height: 1.6; }
 
-/* 본문(Original Post) 강조 */
-.original-post { border: 1px solid #2188ff; } 
-.original-post .comment-header { background-color: #f1f8ff; }
-
-.comment-header {
-  background-color: #f6f8fa;
-  padding: 10px 15px;
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid #d1d5da;
-  font-size: 13px;
-}
-.comment-author { font-weight: 600; margin-right: 10px; }
-.comment-date { color: #586069; flex: 1; }
-.comment-body {
-  padding: 20px;
-  line-height: 1.6;
-  font-size: 15px;
-  white-space: pre-wrap; /* 엔터키 반영 */
-}
+/* 댓글 스타일 */
+.comment-item { border: 1px solid #d1d5da; border-radius: 6px; margin-bottom: 15px; background: #fff; overflow: hidden; }
+.comment-header { background-color: #f6f8fa; padding: 10px 15px; border-bottom: 1px solid #d1d5da; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+.header-left { display: flex; gap: 15px; align-items: center; }
+.comment-body { padding: 20px; white-space: pre-wrap; font-size: 15px; line-height: 1.6; }
+.comment-text-content { word-break: break-all; }
+.edit-comment-textarea { width: 100%; min-height: 80px; padding: 10px; border: 2px solid #2188ff; border-radius: 4px; resize: vertical; font-size: 15px; }
 
 /* 댓글 입력 */
 .comment-input-section { margin-top: 30px; }
-.comment-textarea {
-  width: 100%; height: 100px; padding: 15px;
-  border: 1px solid #d1d5da; border-radius: 6px;
-  resize: none; background-color: #f6f8fa; box-sizing: border-box;
-}
-.button-group { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+.comment-textarea { width: 100%; height: 120px; padding: 15px; border: 1px solid #d1d5da; border-radius: 6px; background-color: #f6f8fa; resize: none; box-sizing: border-box; font-size: 14px; }
+.button-group { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; position: relative; }
+.update-btn { background-color: #fff; border: 1px solid #d1d5da; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
 .submit-btn { background-color: #2ea44f; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
 
-/* 사이드바 */
-.sidebar { flex: 1; min-width: 250px; }
-.sidebar-section {
-  margin-bottom: 25px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #eaecef;
-}
-.sidebar-header {
-  display: flex; justify-content: space-between;
-  color: #586069; font-size: 14px; font-weight: 600; margin-bottom: 15px;
-}
+/* 드롭다운 메뉴 */
+.dropdown-menu { position: absolute; bottom: calc(100% + 10px); right: 0; background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 5px 25px rgba(0,0,0,0.1); z-index: 1000; min-width: 160px; }
+.sidebar .dropdown-menu { top: 45px !important; bottom: auto; left: 0; right: auto; }
+.menu-item { padding: 12px 20px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #f0f0f0; }
+.menu-item:hover { background: #f8f9fa; color: #2188ff; }
 
-/* 배지들 */
-.badge { padding: 4px 12px; border-radius: 12px; color: white; font-weight: bold; font-size: 12px; display: inline-block; }
+/* 사이드바 및 배지 */
+.sidebar { flex: 1; min-width: 280px; border-left: 1px solid #eee; padding-left: 20px; }
+.sidebar-section { margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #eaecef; position: relative; }
+.sidebar-header { display: flex; justify-content: space-between; align-items: center; color: #586069; font-size: 14px; font-weight: 600; margin-bottom: 15px; }
+.settings-icon { background: none; border: none; cursor: pointer; font-size: 16px; }
+
+.badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: bold; color: #fff; text-transform: uppercase; }
 .badge.severity.critical { background-color: #EE0000; }
 .badge.severity.major { background-color: #F89B00; }
 .badge.severity.minor { background-color: #17F000; }
-.badge.station { background-color: #444; }
-.badge-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.badge.station { background-color: #000; }
+.badge-row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
 
-/* 호선 컬러 */
-.line-1호선 { background-color: #2a317c; }
-.line-2호선 { background-color: #2fae35; }
-.line-3호선 { background-color: #ff6000; }
-.line-4호선 { background-color: #1a97dd; }
-.line-5호선 { background-color: #822fe1; }
-.line-6호선 { background-color: #ae4908; }
+/* 노선 색상 */
+.line-1호선 { background-color: #2a317c !important; } .line-2호선 { background-color: #2fae35 !important; }
+.line-3호선 { background-color: #ff6000 !important; } .line-4호선 { background-color: #1a97dd !important; }
+.line-5호선 { background-color: #8936e0 !important; } .line-6호선 { background-color: #b55033 !important; }
+.line-7호선 { background-color: #697214 !important; } .line-8호선 { background-color: #e51e6e !important; }
+.line-9호선 { background-color: #bb831e !important; }
 
-.reporter-info { font-size: 13px; color: #586069; line-height: 1.8; }
+/* 상태 색상 */
+.status-text.wait { color: #d73a49; }
+.status-text.resolving { color: #f89b00; }
+.status-text.done { color: #28a745; }
 </style>
