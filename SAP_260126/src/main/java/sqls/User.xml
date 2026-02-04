@@ -48,18 +48,20 @@
 		where user_id=#{user_id} and user_pw=#{user_pw} 
 	</select>	
 
-	<update id="update_user" parameterType="com.mbc.sap.dto.UserDto">
+<update id="update_user" parameterType="com.mbc.sap.dto.UserDto">
     UPDATE storage.user
     SET 
-        user_pw = #{user_pw},
+        <if test="passwordChange == true">
+            user_pw = #{user_pw},
+        </if>
+        user_email = #{user_email},
         station_id = #{station_id},
         station_name = #{station_name},
-        line_name = #{line_name},
-        user_email = #{user_email}
+        line_name = #{line_name}
     WHERE 
         user_id = #{user_id}
-	</update>
-	
+</update>
+
 	<select id="get_newuserlist" parameterType="com.mbc.sap.dto.UserParam" resultMap="UserMap">
     SELECT 
         user_id, 

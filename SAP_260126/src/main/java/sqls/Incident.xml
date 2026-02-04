@@ -16,10 +16,12 @@
         <result column="user_name" property="user_name"/>
         <result column="create_at" property="create_at"/>
         <result column="complete_at" property="complete_at"/>
+        <result column="comment_cnt" property="comment_cnt"/>
     </resultMap>
 
     <sql id="incidentFilters">
         <where>
+            create_at IS NOT NULL
             <if test="status == 'active'">
                 AND incident_status IN ('1', '2')
             </if>
@@ -38,9 +40,6 @@
                     <when test="category == 'station'">
                         AND incident_station_name LIKE CONCAT('%', #{keyword}, '%')
                     </when>
-                    <otherwise>
-                        AND incident_title LIKE CONCAT('%', #{keyword}, '%')
-                    </otherwise>
                 </choose>
             </if>
 
@@ -56,16 +55,22 @@
         </where>
     </sql>
 
-  <select id="get_incidentlist" parameterType="com.mbc.sap.dto.Incidentparam" resultMap="StatusResultMap">
-    SELECT * FROM storage.incident
-    <include refid="incidentFilters" />
-    ORDER BY 
-    <choose>
-        <when test="sortOrder == 'asc'">create_at ASC</when>
-        <otherwise>create_at DESC</otherwise>
-    </choose>
-    LIMIT 10 OFFSET (${pageNumber} * 10)
-</select>
+    <select id="get_incidentlist" parameterType="com.mbc.sap.dto.Incidentparam" resultMap="StatusResultMap">
+        SELECT 
+            i.*, 
+            (SELECT COUNT(*) 
+             FROM storage.incident_comment c 
+             WHERE c.incident_id = i.incident_id 
+               AND c.create_at IS NOT NULL) AS comment_cnt  
+        FROM storage.incident i
+        <include refid="incidentFilters" />
+        ORDER BY 
+        <choose>
+            <when test="sortOrder == 'asc'">i.create_at ASC</when>
+            <otherwise>i.create_at DESC</otherwise>
+        </choose>
+        LIMIT 10 OFFSET (${pageNumber} * 10)
+    </select>
 
     <select id="count_incident" parameterType="com.mbc.sap.dto.Incidentparam" resultType="int">
         SELECT COUNT(*) 
@@ -112,9 +117,18 @@
 	<update id="update_incident_statusBatch" parameterType="map">
     UPDATE storage.incident
     <set>
-        <if test="updateType == 'severity'">incident_severity = #{updateValue},</if>
-        <if test="updateType == 'line'">incident_line_name = #{updateValue},</if>
-        <if test="updateType == 'station'">incident_station_name = #{updateValue},</if>
+        <if test="updateType == 'status'">
+            incident_status = #{updateValue},
+        </if>
+        <if test="updateType == 'severity'">
+            incident_severity = #{updateValue},
+        </if>
+        <if test="updateType == 'line'">
+            incident_line_name = #{updateValue},
+        </if>
+        <if test="updateType == 'station'">
+            incident_station_name = #{updateValue},
+        </if>
     </set>
     WHERE incident_id IN
     <foreach collection="incident_id" item="id" open="(" separator="," close=")">

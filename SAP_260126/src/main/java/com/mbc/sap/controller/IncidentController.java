@@ -43,7 +43,7 @@ public class IncidentController {
  }
  @PostMapping("create_incident")
  public String create_incident(@RequestBody IncidentDto dto) {
- 	System.out.println("println"+ new Date());
+ 	System.out.println("작성창실행..."+ new Date());
  	boolean isS = service.create_incident(dto);
  	
  	String message = "YES";

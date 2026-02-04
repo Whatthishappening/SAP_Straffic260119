@@ -3,17 +3,21 @@
     <div class="main-content">
       <div class="detail-header">
         <h2 class="detail-title">
-          <span class="status-text" :class="getStatusClass(issueData.incident_status)">
-            [{{ getStatusLabel(issueData.incident_status) }}]
-          </span> 
-          <input 
-            v-if="Edit_titleMode" 
-            v-model="issueData.incident_title" 
-            class="edit-title-input"
-            placeholder="제목을 입력하세요"
-          />
-          <span v-else>{{ issueData.incident_title || '불러오는 중...' }}</span>
-        </h2>
+  <span 
+    class="status-text" 
+    :style="{ color: getStatusConfig(issueData.incident_status).color }"
+  >
+    [{{ getStatusConfig(issueData.incident_status).label }}]
+  </span> 
+  
+  <input 
+    v-if="Edit_titleMode" 
+    v-model="issueData.incident_title" 
+    class="edit-title-input"
+    placeholder="제목을 입력하세요"
+  />
+  <span v-else>{{ issueData.incident_title || '불러오는 중...' }}</span>
+</h2>
         <div class="detail-meta">
           # by <strong>{{ issueData.user_name }}</strong> reported at {{ issueData.create_at || '최근' }}
           
@@ -135,10 +139,12 @@
           <StationSimpleSelector @selected="onStationSelected" />
         </div>
         <div class="sidebar-content">
-          <div class="badge-row" v-if="issueData.incident_line_name">
-            <span class="badge display-box" :class="'line-' + issueData.incident_line_name.replace(' ', '')">
+          <div class="badge-row">
+          <span v-if="issueData.incident_line_name" 
+              class="badge display-box" 
+              :class="'line-' + issueData.incident_line_name.replace(' ', '')">
               {{ issueData.incident_line_name }}
-            </span>
+          </span>
             <span v-if="issueData.incident_station_name" class="badge station">
               {{ issueData.incident_station_name }}
             </span>
@@ -211,10 +217,11 @@ onUnmounted(() => {
 });
 
 const update_issueDetail = () => {
+  // 서버에 보내기 전 데이터 확인 (디버깅용)
+  console.log("저장될 데이터:", issueData.value);
   axios.post('http://localhost:9000/update_incident', issueData.value)
     .then(resp => {
       if (resp.data === "YES" || resp.data === 1) {
-        alert("저장되었습니다.");
         isEditMode.value = false;
         Edit_titleMode.value = false;
         loadDetail();
@@ -276,21 +283,36 @@ const saveEdit = (commentId) => {
 };
 
 const selectStatus = (val) => {
+  // 1. 값 변경
   issueData.value.incident_status = String(val);
-  activeMenu.value = null;
-  axios.post('http://localhost:9000/update_incident_status', {
-    incident_id: issueData.value.incident_id,
-    incident_status: issueData.value.incident_status
-  }).then(() => { alert('상태 변경 완료'); loadDetail(); });
+  
+  axios.post('http://localhost:9000/update_incident_status', issueData.value)
+    .then(resp => {
+      if (resp.data === "YES") {
+        alert('상태 변경 완료');
+        activeMenu.value = null;
+        loadDetail();
+      } else {
+        alert('상태 변경 실패 (NO)');
+      }
+    }).catch(err => {
+      console.error(err);
+      alert('서버 통신 오류');
+    });
 };
-
 const selectSeverity = (lv) => { issueData.value.incident_severity = lv; activeMenu.value = null; update_issueDetail(); };
 
 const onStationSelected = (data) => {
+ console.log("자식으로부터 받은 데이터:", data); // 디버깅용
+
+  // 1. 자식이 보낸 데이터가 빈 값이어도 그대로 덮어씁니다.
+  // (data.line_name이 '' 이면 issueData의 노선도 '' 이 됩니다)
   issueData.value.incident_line_name = data.line_name;
   issueData.value.incident_station_name = data.station_name;
   issueData.value.incident_station_id = data.station_id;
+ // 2. 드롭다운 메뉴 닫기
   activeMenu.value = null;
+  // 3. 서버에 수정 사항 저장 (DB 업데이트)
   update_issueDetail();
 };
 
@@ -300,9 +322,15 @@ const handleClickOutside = (e) => {
     activeMenu.value = null;
   }
 };
-
-const getStatusLabel = (s) => (statusMap[s] || '알수없음');
-const getStatusClass = (s) => ({ '1': 'wait', '2': 'resolving', '3': 'done' }[s] || '');
+const getStatusConfig = (status) => {
+  const configs = { 
+    '1': { label: '대기', color: '#9e9e9e', class: 'wait' }, 
+    '2': { label: '해결중', color: '#0e6ca5', class: 'resolving' }, 
+    '3': { label: '완료', color: '#17f000', class: 'done' }, 
+    '4': { label: '비활성화', color: '#EEEEEE', class: 'disabled' } 
+  };
+  return configs[status] || { label: '알수없음', color: '#333', class: '' };
+};
 </script>
 
 <style scoped>
@@ -368,8 +396,10 @@ const getStatusClass = (s) => ({ '1': 'wait', '2': 'resolving', '3': 'done' }[s]
 .line-7호선 { background-color: #697214 !important; } .line-8호선 { background-color: #e51e6e !important; }
 .line-9호선 { background-color: #bb831e !important; }
 
-/* 상태 색상 */
-.status-text.wait { color: #d73a49; }
-.status-text.resolving { color: #f89b00; }
-.status-text.done { color: #28a745; }
+
+.status-text {
+  font-weight: 800;
+  font-size: 18px; 
+  margin-right: 5px;
+}
 </style>
