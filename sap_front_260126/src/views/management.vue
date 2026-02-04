@@ -41,7 +41,7 @@
             <tbody>
               <tr v-for="(user, index) in users_new" :key="'new_' + user.user_id" :class="{ 'row_checked': user.checked }">
                 <td><input type="checkbox" v-model="user.checked"></td>
-                <td class="value_bold">{{ cnt_new - ((page_new - 1) * 5) - index }}</td>
+                <td class="value_bold">{{ index + 1 }}</td>
                 <td class="value_id">{{ user.user_id }}</td>
                 <td>{{ user.user_name }}</td>
                 <td><div class="display_box" :class="'line_' + user.line_name">{{ user.line_name }}</div></td>

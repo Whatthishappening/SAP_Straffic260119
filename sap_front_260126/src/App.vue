@@ -42,7 +42,9 @@
           <div class="nav-item" @click="handleViewChange('statusstation')" :class="{ active: currentView === 'statusstation' }">▶역별현황</div>
           <div class="nav-item" @click="handleViewChange('analysis')" :class="{ active: currentView === 'analysis' }">▶통계 분석</div>
           <div class="nav-item" @click="handleViewChange('insident')" :class="{ active: currentView === 'insident' }">▶장애/이슈</div>
-          <div class="nav-item" @click="handleViewChange('management')" :class="{ active: currentView === 'management' }">▶사용자 관리</div>
+         <div v-if="Number(userData.auth) === 1" class="nav-item" @click="handleViewChange('management')" :class="{ active: currentView === 'management' }">
+         ▶사용자 관리
+         </div>
         </nav>
       </aside>
 
@@ -59,20 +61,44 @@
     </div>
 
     <footer class="footer">
-      <div class="footer-content">
-        <img :src="logofooter" alt="footer logo" class="footer-inline-logo" />
-        <span class="copyright">
-          <table>
-            <tbody>
-              <tr><td>배영환 | Project Manger | uee8351773@naver.com</td></tr>
-              <tr><td>김소연 | Consultant | www.linkedin.com/in/souyeon-kim-735996394</td></tr>
-              <tr><td>송원호 | Developer | dnjsghman@naver.com</td></tr>
-              <tr><td>오창석 | Developer | dhckdtjr11@naver.com</td></tr>
-            </tbody>
-          </table>
-        </span>
-      </div>
-    </footer>
+  <div class="footer-content">
+    <img :src="logofooter" alt="footer logo" class="footer-inline-logo" />
+    <span class="copyright">
+      <table class="footer-info-table">
+        <tbody>
+          <tr>
+            <td class="f-name">배영환</td>
+            <td class="f-sep">|</td>
+            <td class="f-role">Project Manager</td>
+            <td class="f-sep">|</td>
+            <td class="f-email">uee8351773@naver.com</td>
+          </tr>
+          <tr>
+            <td class="f-name">김소연</td>
+            <td class="f-sep">|</td>
+            <td class="f-role">Consultant</td>
+            <td class="f-sep">|</td>
+            <td class="f-email">www.linkedin.com/in/souyeon-kim-735996394</td>
+          </tr>
+          <tr>
+            <td class="f-name">송원호</td>
+            <td class="f-sep">|</td>
+            <td class="f-role">Developer</td>
+            <td class="f-sep">|</td>
+            <td class="f-email">dnjsghman@naver.com</td>
+          </tr>
+          <tr>
+            <td class="f-name">오창석</td>
+            <td class="f-sep">|</td>
+            <td class="f-role">Developer</td>
+            <td class="f-sep">|</td>
+            <td class="f-email">dhckdtjr11@naver.com</td>
+          </tr>
+        </tbody>
+      </table>
+    </span>
+  </div>
+</footer>
   </div>
 </template>
 
@@ -101,7 +127,8 @@ const userData = reactive({
   id: '',
   name: '',
   line_name: 'default',
-  station_name: ''
+  station_name: '',
+  auth: null
 });
 
 // 뷰 변경 핸들러
@@ -122,10 +149,14 @@ const handleViewChange = (viewName, payload = null) => {
 const applyUserData = (payload) => {
   if (!payload || (!payload.id && !payload.user_id)) return false;
   
+  // 데이터부터 싹 담기
   userData.id = payload.user_id || payload.id || '';
   userData.name = payload.user_name || payload.name || '';
   userData.line_name = payload.line_name || 'default';
   userData.station_name = payload.station_name || '';
+  userData.auth = payload.auth; // 권한 담기
+  
+  // 그 다음 로그인 처리
   isLoggedIn.value = true;
   return true;
 };
@@ -187,14 +218,40 @@ const logout = () => {
 </script>
 
 <style>
+
+/* 1. html, body 수정 */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  /* 가로 스크롤을 허용으로 변경! */
+  overflow-x: auto !important; 
+  overflow-y: auto;
+}
+
 /* --- 기본 리셋 --- */
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { overflow-y: auto; overflow-x: hidden; min-height: 100vh; font-family: 'Pretendard', sans-serif; }
+body { overflow-y: auto; 
+  overflow-x: hidden;  
+  min-height: 100vh; }
 
-/* --- 레이아웃 구조 --- */
-.layout { display: flex; flex-direction: column; min-height: 100vh; width: 100vw; }
-.container { display: flex; flex: 1; }
-
+/* 2. 전체 레이아웃 */
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-width: 1200px; 
+  width: 100%;
+  position: relative;
+}
+/* 3. 중간 영역 (사이드바 + 컨텐츠) */
+.container {
+  display: flex;
+  flex: 1; 
+  width: 100%;
+  height: auto; 
+}
 /* --- 헤더 스타일 --- */
 .header {
   height: 160px;
@@ -203,6 +260,11 @@ body { overflow-y: auto; overflow-x: hidden; min-height: 100vh; font-family: 'Pr
   color: white;
   border-bottom: 2px solid rgba(0,0,0,0.1);
   flex-shrink: 0;
+}
+/* 3. 헤더와 컨테이너도 너비를 따라가게 설정 */
+.header, .container, .footer {
+  width: 100%;
+  min-width: 1200px; 
 }
 .header-left-col {
   width: 240px;
@@ -235,19 +297,58 @@ body { overflow-y: auto; overflow-x: hidden; min-height: 100vh; font-family: 'Pr
 }
 .nav-item { padding: 12px; margin-bottom: 5px; cursor: pointer; border-radius: 8px; color: #555; transition: 0.2s; }
 
-/* --- 컨텐츠 --- */
-.content { flex: 1; padding: 30px; background-color: #fcfcfc; }
-
+/* 4. 실제 내용이 들어가는 영역 */
+.content {
+  flex: 1;
+  padding: 30px;
+  background-color: #fcfcfc;
+  /* 컨텐츠가 길어지면 부모인 .layout을 밀어내며 길어지게 합니다 */
+  min-height: 100%; 
+}
 /* --- 푸터 --- */
+/* 1. 푸터 전체 상자의 높이와 여백 조절 */
 .footer {
   width: 100%;
-  min-height: 100px;
+  min-height: 140px;      /* 높이를 넉넉하게 늘림 */
   background-color: #eee;
   display: flex;
-  align-items: center;
+  align-items: center;    /* 수직 가운데 정렬 */
   justify-content: center;
-  padding: 20px 0;
+  padding: 10px 0;        /* 위아래에 40px씩 넉넉하게 마진(패딩) 추가! */
 }
+.footer-content {
+  display: flex;
+  align-items: center;  
+  justify-content: center; 
+  gap: 30px; 
+  width: 100%; 
+}
+/* 2. 테이블을 감싸는 span 태그 설정 */
+.footer .copyright {
+  display: flex;
+  justify-content: flex-start; 
+}
+/* 3. 테이블 스타일 (폰트와 정렬) */
+.footer .copyright table {
+  color: #666;
+  font-size: 0.85rem;
+  border-collapse: collapse;
+  font-family: 'Pretendard', 'Courier New', monospace; 
+  line-height: 1.6;
+  text-align: left; 
+}
+.footer .copyright td {
+  
+  white-space: pre; 
+  padding: 2px 0;
+}
+
+/* 호선 테마 적용 시 텍스트 흰색 유지 */
+.layout[class*="line_name-"] .footer .copyright table {
+  color: white !important;
+}
+
+/* 추가 꿀팁: 구분선(|)만 살짝 흐리게 하고 싶다면 텍스트 색상을 조절하세요 */
 .footer-content { display: flex; align-items: center; gap: 20px; }
 .footer-inline-logo { height: 60px; }
 .footer .copyright table { color: #666; font-size: 0.8rem; }

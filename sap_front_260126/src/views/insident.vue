@@ -339,7 +339,7 @@ onUnmounted(() => {
 .filter-bar.bulk-mode { background-color: #fffbdd; }
 .filter-left { display: flex; align-items: center; gap: 15px; }
 .bulk-check-wrapper { display: flex; align-items: center; padding-right: 5px; }
-.main-checkbox { width: 16px; height: 16px; cursor: pointer; }
+.main-checkbox { width: 16px; height: 50px; cursor: pointer; }
 .status-tabs-container { display: flex; position: relative; gap: 15px; }
 .status-tab { display: flex; align-items: center; gap: 8px; padding: 15px 5px; cursor: pointer; color: #586069; font-size: 14px; z-index: 1; }
 .status-tab.active { color: #24292e; font-weight: bold; }
@@ -355,7 +355,7 @@ onUnmounted(() => {
 .issue-item { display: flex; align-items: center; padding: 14px 20px; background-color: #fff; border: 1px solid #d1d5da; border-top: none; cursor: pointer; }
 .issue-item:hover { background-color: #f6f8fa; }
 .issue-item.is-selected { background-color: #fffdef; }
-.item-checkbox { margin-right: 15px; display: flex; align-items: center; }
+.item-checkbox { margin-right: 15px; display: flex; transform: scale(1.3); align-items: center; }
 .issue-main { flex: 1; min-width: 0; }
 .issue-title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: nowrap; overflow: hidden; }
 .title-text { font-size: 16px; font-weight: 600; color: #24292e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 50%; }
