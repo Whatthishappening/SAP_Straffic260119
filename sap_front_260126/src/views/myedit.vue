@@ -24,13 +24,14 @@
           </li>
           <li>
             <span class="bullet">●</span>
-            <span class="label">새 PW :</span>
-            <input type="password" class="edit-input" v-model="user_pw" placeholder="변경 시에만 입력하세요" />
-          </li>
-          <li v-if="user_pw.trim() !== ''">
-            <span class="bullet">●</span>
             <span class="label" style="color: #e74c3c;">현재 PW 확인 :</span>
-            <input type="password" class="edit-input" v-model="current_pw" placeholder="본인 확인용 비밀번호 입력" />
+            <input type="password" class="edit-input" v-model="current_pw" placeholder="변경 시에만 입력하세요" />
+        
+           </li>
+          <li v-if="current_pw.trim() !== ''">
+             <span class="bullet">●</span>
+            <span class="label">새 PW :</span>
+            <input type="password" class="edit-input" v-model="user_pw" placeholder="본인 확인용 비밀번호 입력" />
           </li>
           <li>
             <span class="bullet">●</span>
@@ -80,10 +81,11 @@ export default {
     this.user_id = login.user_id || login.id || '';
     this.user_name = login.user_name || login.name || '';
     this.user_email = login.user_email || login.email || '';
-    this.selectedSubway.line_name = login.line_name || '';
-    this.selectedSubway.station_name = login.station_name || '';
-    this.selectedSubway.station_id = login.station_id || '';
+    this.selectedSubway.line_name = ''; 
+    this.selectedSubway.station_name = '';
+    this.selectedSubway.station_id = '';
   },
+ 
 
   
   methods: {
@@ -95,6 +97,15 @@ export default {
 
     
     async update_user() {
+      if (!this.selectedSubway.line_name || this.selectedSubway.line_name.trim() === "" || this.selectedSubway.line_name === "미선택") {
+        alert("노선을 선택해주세요.");
+        return;
+      }
+
+      if (!this.selectedSubway.station_name || this.selectedSubway.station_name.trim() === "" || this.selectedSubway.station_name === "미선택") {
+        alert("역을 선택해주세요.");
+        return;
+      }
       const updateData = {
         user_id: this.user_id,
         user_email: this.user_email,
@@ -127,6 +138,10 @@ export default {
           } else {
             this.updateSession(updateData);
             this.$emit('change-view', 'my');
+          // 약간의 시간차를 두고 새로고침 실행 (이동이 확실히 인지되도록)
+            setTimeout(() => {
+              window.location.reload();
+            }, 100);
           }
         }
       } catch (err) {
