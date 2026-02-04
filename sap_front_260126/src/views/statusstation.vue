@@ -42,12 +42,14 @@
           </tr>
           <tr v-for="item in displayList" :key="item.station_id + item.line_name">
             <td class="bold">{{ item.station_name }}</td>
-            <td>
+            <td class="line-cell">
               <span class="line-badge" :style="{ backgroundColor: getLineColor(item.line_name) }">
                 {{ item.line_name }}
               </span>
             </td>
-            <td v-if="isVisible('incident_count')">{{ item.incident_count }}개</td>
+            <td v-if="isVisible('incident_count')" :class="{ 'text-danger': item.incident_count > 0 }">
+              {{ item.incident_count }}개
+            </td>
             <td v-if="isVisible('lockers')">
               <span class="used-cnt">{{ item.used_lockers }}</span> / {{ item.total_lockers }}개
             </td>
@@ -72,11 +74,10 @@ import { ref, computed } from 'vue';
 import axios from 'axios';
 import SubwaySearch from './SubwaySearch.vue';
 
-// 카테고리 옵션에 엘리베이터(elevator) 추가
 const categoryOptions = [
   { key: 'incident_count', label: '장애발생건수' }, 
   { key: 'lockers', label: '물품보관함' },
-  { key: 'elevator', label: '엘리베이터' }, // 추가됨
+  { key: 'elevator', label: '엘리베이터' },
   { key: 'parking', label: '환승주차장' }, 
   { key: 'wheelchair', label: '휠체어리프트' },
   { key: 'civil_service', label: '무인민원발급기' }, 
@@ -104,6 +105,7 @@ const handleSearch = async (searchData) => {
   try {
     const res = await axios.get('http://localhost:9000/get_status');
     let allData = res.data;
+    const searchKeyword = searchData.keyword || '';
 
     if (searchData.type === 'station') {
       displayList.value = allData.filter(s => s.station_id === searchData.station_id);
@@ -111,35 +113,65 @@ const handleSearch = async (searchData) => {
     else if (searchData.type === 'line') {
       displayList.value = allData.filter(s => {
         const matchLine = s.line_name === searchData.line_name;
-        return searchData.keyword ? (matchLine && s.station_name.includes(searchData.keyword)) : matchLine;
+        return searchKeyword ? (matchLine && s.station_name.includes(searchKeyword)) : matchLine;
       });
     } 
     else if (searchData.type === 'keyword') {
-      displayList.value = allData.filter(s => s.station_name.includes(searchData.keyword));
+      displayList.value = allData.filter(s => s.station_name.includes(searchKeyword));
     }
     else {
       displayList.value = allData;
     }
 
-    displayList.value.sort((a, b) => a.line_name.localeCompare(b.line_name, undefined, { numeric: true }));
+    displayList.value.sort((a, b) => {
+      if (searchKeyword) {
+        // 1. 역명 가나다순 우선 (을지로3가, 을지로3가, 을지로4가, 을지로4가끼리 묶기 위해)
+        const nameSort = a.station_name.localeCompare(b.station_name);
+        if (nameSort !== 0) return nameSort;
 
-  } catch (err) { console.error("데이터 로드 실패:", err); }
+        // 2. 역명이 같을 경우 호선 숫자 순서 정렬 (1호선 -> 2호선)
+        const lineA = parseInt(a.line_name.replace(/[^0-9]/g, ""));
+        const lineB = parseInt(b.line_name.replace(/[^0-9]/g, ""));
+        return lineA - lineB;
+      }
+
+      // 검색어 없을 시 (전체 검색 등) 기본 호선 우선 정렬
+      const lineA = parseInt(a.line_name.replace(/[^0-9]/g, ""));
+      const lineB = parseInt(b.line_name.replace(/[^0-9]/g, ""));
+      if (lineA !== lineB) return lineA - lineB;
+      return a.station_name.localeCompare(b.station_name);
+    });
+
+  } catch (err) { 
+    console.error("데이터 로드 실패:", err); 
+  }
 };
 </script>
 
 <style scoped>
-/* 기존 스타일 그대로 유지 */
 .status-container { padding: 20px; }
 .category-filter-card { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
 .filter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+.filter-title { font-weight: bold; font-size: 18px; color: #333; margin: 0; }
 .toggle-all-btn { padding: 5px 12px; font-size: 12px; cursor: pointer; background: #f4f4f4; border: 1px solid #ddd; border-radius: 4px; }
 .checkbox-group { display: flex; flex-wrap: wrap; gap: 15px; }
 .table-wrapper { background: #fff; border-radius: 12px; overflow-x: auto; border: 1px solid #eee; }
-.status-table { width: 100%; border-collapse: collapse; text-align: center; min-width: 1000px; }
-.status-table th { background: #f8f9fa; padding: 15px; border-bottom: 2px solid #eee; font-size: 14px; }
-.status-table td { padding: 15px; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
-.line-badge { color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+.status-table { width: 100%; border-collapse: collapse; text-align: center; min-width: 1100px; table-layout: fixed; }
+.status-table th, .status-table td { padding: 15px; border-bottom: 1px solid #f0f0f0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.status-table th { background: #f8f9fa; border-bottom: 2px solid #eee; font-weight: bold; }
+.line-cell { width: 100px; }
+.line-badge { 
+  display: inline-block;
+  color: white; 
+  padding: 4px 12px; 
+  border-radius: 20px; 
+  font-size: 12px; 
+  font-weight: bold; 
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 .used-cnt { color: #007bff; font-weight: bold; }
 .bold { font-weight: bold; }
-.no-data { padding: 40px; color: #999; }
+.text-danger { color: #ff0000; font-weight: bold; }
+.no-data { padding: 40px; color: #999; text-align: center; }
 </style>
