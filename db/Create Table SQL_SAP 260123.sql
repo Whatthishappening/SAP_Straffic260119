@@ -60,13 +60,6 @@ select * from storage.local_amenities;
 
 select * from storage.locker_usage order by locker_usage.created_at desc
 
-<<<<<<< HEAD
-select * from storage.incident;
-=======
-select * from storage.user;
-ALTER TABLE storage.user COLUMN username VARCHAR(100);
->>>>>>> ecd89b5 (260204 못먹어도 고)
-
 --update storage.user set auth = 1 where user_name = '배영환';
 
 
