@@ -24,10 +24,14 @@ public class DashboardController {
 	
 	@GetMapping("get_dashboard")
 	public ResponseEntity<DashboardDto> getDashboard(@RequestParam("auth") String auth,
-													 @RequestParam("station_id") String station_id){
-		System.out.println("DashboardController get_dashboard " + new Date());
+													 @RequestParam(value = "station_id", required = false) String station_id){
 		
-		return ResponseEntity.ok(service.getDashboard(auth, station_id));
+		System.out.println("DashboardController get_dashboard 실행 시간: " + new Date());
+		System.out.println("요청 권한(auth): " + auth + ", 역 ID(station_id): " + station_id);
+		
+		DashboardDto result = service.getDashboard(auth, station_id);
+		
+		return ResponseEntity.ok(result);
 	}
 
 }

@@ -34,7 +34,7 @@
 
       <div class="v-divider"></div>
 
-      <div class="summary-item">
+      <div class="summary-item incident-widget" @click="goIncidentBoard">
         <span class="item-label">장애 / 이슈 현황</span>
         <div class="issue-box-vertical large">
           <img src="@/assets/경고표시.png" alt="경고" class="issue-icon-big" />
@@ -98,7 +98,7 @@
       
       <div class="card">
         <h3>최근 7일 장애 발생 현황</h3>
-        <div class="canvas-wrapper empty-data">
+        <div class="canvas-wrapper">
           <canvas id="weeklyChart"></canvas>
           <div v-if="!hasWeeklyData" class="no-data-overlay">데이터 집계 대기 중</div>
         </div>
@@ -117,66 +117,46 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue';
+import { useRouter } from 'vue-router'; // 이 부분 확인 필수
 import axios from 'axios';
 import Chart from 'chart.js/auto';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 
+const router = useRouter(); // router 초기화
 const dashboardData = ref(null);
 const userLine = ref(""); 
 const userAuth = ref("");
 const hasWeeklyData = ref(false); 
 let chartInstances = {};
 
-const seoulWeather = ref({
-  tm: '202602040900',
-  stn: 108,
-  wd: 5,
-  ws: 2.1,
-  ta: 2.0,
-  hm: 75,
-  rn: -9.0
-});
-
+// 날씨 데이터 & 로직 (건드리지 않음)
+const seoulWeather = ref({ tm: '202602040900', stn: 108, wd: 5, ws: 2.1, ta: 2.0, hm: 75, rn: -9.0 });
 const windDirText = computed(() => {
   const dirs = ['북', '북동', '동', '남동', '남', '남서', '서', '북서', '북'];
   return dirs[Math.round(seoulWeather.value.wd / 45)] + '풍';
 });
-
-const displayRain = computed(() => {
-  return seoulWeather.value.rn < 0 ? '0mm' : seoulWeather.value.rn + 'mm';
-});
-
+const displayRain = computed(() => seoulWeather.value.rn < 0 ? '0mm' : seoulWeather.value.rn + 'mm');
 const feelsLikeTemp = computed(() => {
   const t = seoulWeather.value.ta;
   const v = seoulWeather.value.ws;
-  const result = 13.12 + (0.6215 * t) - (11.37 * Math.pow(v, 0.16)) + (0.3965 * t * Math.pow(v, 0.16));
-  return result.toFixed(1);
+  return (13.12 + (0.6215 * t) - (11.37 * Math.pow(v, 0.16)) + (0.3965 * t * Math.pow(v, 0.16))).toFixed(1);
 });
-
 const weatherStatus = computed(() => seoulWeather.value.rn > 0 ? '비/눈' : (seoulWeather.value.hm > 70 ? '흐림' : '맑음'));
 const weatherIcon = computed(() => seoulWeather.value.rn > 0 ? '☔' : (seoulWeather.value.hm > 70 ? '☁️' : '☀️'));
+const formatObsTime = (tm) => tm ? `${tm.substring(8, 10)}:${tm.substring(10, 12)}` : '';
 
-const formatObsTime = (tm) => {
-  if(!tm) return '';
-  return `${tm.substring(8, 10)}:${tm.substring(10, 12)}`;
-};
+// 이동 관련 함수들
+const goIncidentBoard = () => router.push('/incident'); // 장애 게시판 이동 로직
+const goTrainInfo = () => window.open("https://smss.seoulmetro.co.kr/traininfo/traininfoUserView.do", '_blank');
+const goWeatherDetail = () => window.open("https://weather.naver.com/map/", '_blank');
 
 const getLineImage = () => {
   let fileName = "Lineall.png";
-  if (userAuth.value === "2" && userLine.value) {
-    fileName = `Line${userLine.value}.png`;
-  }
+  if (userAuth.value === "2" && userLine.value) fileName = `Line${userLine.value}.png`;
   return new URL(`../assets/Line/${fileName}`, import.meta.url).href;
 };
 
-const goTrainInfo = () => {
-  window.open("https://smss.seoulmetro.co.kr/traininfo/traininfoUserView.do", '_blank');
-};
-
-const goWeatherDetail = () => {
-  window.open("https://weather.naver.com/map/", '_blank');
-};
-
+// 데이터 바인딩 및 차트 로직 (기존과 동일)
 const linetitle = computed(() => dashboardData.value?.linetitle || '운영 현황');
 const linetotal = computed(() => dashboardData.value?.linetotal || 0);
 const stationtotal = computed(() => dashboardData.value?.stationtotal || 0);
@@ -185,96 +165,86 @@ const total_lockers = computed(() => dashboardData.value?.total_lockers || 0);
 const used_lockers = computed(() => dashboardData.value?.used_lockers || 0);
 const incident_count = computed(() => dashboardData.value?.incident_count || 0);
 
-const currentRate = computed(() => {
-  if (!total_lockers.value) return 0;
-  return Math.round((used_lockers.value / total_lockers.value) * 100);
-});
+const currentRate = computed(() => total_lockers.value ? Math.round((used_lockers.value / total_lockers.value) * 100) : 0);
 
 const initCharts = () => {
   Object.values(chartInstances).forEach(instance => instance.destroy());
   
-  const donutOpt = { 
-    cutout: '70%', 
-    responsive: true, 
-    maintainAspectRatio: false, 
-    plugins: { 
-      legend: { display: false },
-      datalabels: { display: false }
-    } 
-  };
-
   const ctxUsed = document.getElementById('usedStorageChart')?.getContext('2d');
   if (ctxUsed) {
-    const t = Number(total_lockers.value) || 0;
-    const u = Number(used_lockers.value) || 0;
-    const remains = Math.max(0, t - u);
-
     chartInstances.used = new Chart(ctxUsed, { 
       type: 'doughnut', 
       data: { 
         labels: ['사용 중', '여유'],
         datasets: [{ 
-          data: [u, remains], 
+          data: [used_lockers.value, Math.max(0, total_lockers.value - used_lockers.value)], 
           backgroundColor: ['#36A2EB', '#f2f2f2'], 
           borderWidth: 0 
         }] 
       }, 
-      options: donutOpt 
+      options: { cutout: '70%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, datalabels: { display: false } } } 
     });
   }
 
   const ctxHourly = document.getElementById('hourlyChart')?.getContext('2d');
   if (ctxHourly) {
-    const rate = currentRate.value;
-    const chartData = dashboardData.value?.hourlyData || [rate-5, rate-2, rate+5, rate+10, rate+2, rate];
-    
+    const chartData = dashboardData.value?.hourlyData || [currentRate.value-5, currentRate.value-2, currentRate.value, currentRate.value+3, currentRate.value+1, currentRate.value];
     chartInstances.hourly = new Chart(ctxHourly, {
       type: 'line',
       plugins: [ChartDataLabels],
       data: { 
         labels: ['08시', '11시', '14시', '17시', '20시', '23시'], 
         datasets: [{ 
-          label: '사용률 (%)', 
           data: chartData, 
           borderColor: '#36A2EB', 
           fill: true, 
           backgroundColor: 'rgba(54, 162, 235, 0.1)', 
           tension: 0.4,
-          pointRadius: 5,
-          pointBackgroundColor: '#36A2EB'
+          pointRadius: 5
         }] 
       },
       options: { 
-        responsive: true, 
-        maintainAspectRatio: false, 
+        responsive: true, maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true, max: 100, ticks: { callback: (v) => v + '%' } } },
+        plugins: { legend: { display: false }, datalabels: { display: true, align: 'top', formatter: (v) => v + '%' } }
+      }
+    });
+  }
+
+  const ctxWeekly = document.getElementById('weeklyChart')?.getContext('2d');
+  const weeklyData = dashboardData.value?.weekly_issue;
+
+  if (ctxWeekly && weeklyData && weeklyData.length > 0) {
+    hasWeeklyData.value = weeklyData.some(d => d.count > 0);
+    chartInstances.weekly = new Chart(ctxWeekly, {
+      type: 'bar',
+      plugins: [ChartDataLabels],
+      data: {
+        labels: weeklyData.map(d => d.date), 
+        datasets: [{
+          data: weeklyData.map(d => d.count), 
+          backgroundColor: '#FF6384',
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
         scales: { 
-          y: { 
-            beginAtZero: true, 
-            min: 0,
-            max: 100,
-            ticks: { 
-              display: true,
-              stepSize: 20,
-              callback: (value) => value <= 100 ? value + '%' : ''
-            },
-            grid: { display: true, color: 'rgba(0, 0, 0, 0.05)' }
-          },
+          y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } },
           x: { grid: { display: false } }
         },
         plugins: {
           legend: { display: false },
           datalabels: {
-            display: true,
-            align: 'top',
-            anchor: 'end',
-            offset: 4,
-            color: '#36A2EB',
-            font: { size: 12, weight: 'bold' },
-            formatter: (value) => value + '%'
+            display: true, anchor: 'end', align: 'top', color: '#FF6384',
+            font: { weight: 'bold' }, formatter: (v) => v > 0 ? v + '건' : '0'
           }
         }
       }
     });
+  } else {
+    hasWeeklyData.value = false;
   }
 };
 
@@ -286,29 +256,29 @@ const fetchData = async () => {
       const user = JSON.parse(loginData);
       userAuth.value = String(user.auth);
       s_id = user.station_id;
-      if (userAuth.value === "2" && s_id) {
-        userLine.value = String(s_id).charAt(0);
-      }
+      if (userAuth.value === "2" && s_id) userLine.value = String(s_id).charAt(0);
     }
     const res = await axios.get('http://localhost:9000/get_dashboard', { params: { auth: userAuth.value, station_id: s_id } });
     dashboardData.value = res.data;
     await nextTick();
-    setTimeout(initCharts, 50);
+    setTimeout(initCharts, 100); 
   } catch (err) { console.error(err); }
 };
 onMounted(fetchData);
 </script>
 
 <style scoped>
+/* 기존 스타일 그대로 유지 */
 .dashboard-container { padding: 30px; background: #f4f7fa; min-height: 100vh; font-family: 'Pretendard', sans-serif; }
 .dashboard-header { margin-bottom: 25px; padding-left: 10px; }
 .dashboard-header h1 { font-size: 28px; font-weight: 800; color: #1a2a3a; margin: 0; }
-.main-summary-bar { display: flex; align-items: center; background: #fff; padding: 25px 25px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.06); gap: 5px; margin-bottom: 30px; }
+.main-summary-bar { display: flex; align-items: center; background: #fff; padding: 25px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.06); gap: 5px; margin-bottom: 30px; }
 .summary-item { flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; }
 
-/* 날씨 위젯 */
-.weather-widget { cursor: pointer; transition: transform 0.2s; }
-.weather-widget:hover { transform: translateY(-3px); }
+/* 클릭 위젯 효과 추가 */
+.incident-widget, .weather-widget { cursor: pointer; transition: transform 0.2s; }
+.incident-widget:hover, .weather-widget:hover { transform: translateY(-3px); }
+
 .weather-content { display: flex; flex-direction: column; align-items: center; }
 .weather-top { display: flex; align-items: center; gap: 8px; }
 .weather-icon { font-size: 32px; }
@@ -319,8 +289,7 @@ onMounted(fetchData);
 .weather-bottom { margin-top: 8px; font-size: 12.5px; color: #777; display: flex; align-items: center; gap: 4px; }
 .dot { font-size: 8px; color: #ccc; }
 .weather-time { margin-top: 6px; font-size: 11px; color: #999; font-weight: 500; }
-
-.item-label { font-size: 18px; font-weight: 700; color: #1a2a3a; margin-bottom: 12px;  }
+.item-label { font-size: 18px; font-weight: 700; color: #1a2a3a; margin-bottom: 12px; }
 .num.highlight { font-size: 24px; font-weight: 800; color: #1a2a3a; }
 .item-content p { font-size: 16px; margin: 4px 0; color: #444; }
 .chart-box.big-chart { width: 110px; height: 110px; margin-bottom: 8px; position: relative; }
@@ -340,5 +309,5 @@ onMounted(fetchData);
 .route-map-img-fixed { width: 100%; height: 100%; object-fit: cover; }
 .hover-info { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); color: #fff; display: flex; align-items: center; justify-content: center; opacity: 0; transition: 0.3s; font-weight: bold; }
 .image-display-container:hover .hover-info { opacity: 1; }
-.no-data-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #f9f9f9; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 14px; border-radius: 12px; }
+.no-data-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(249, 249, 249, 0.9); display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 14px; border-radius: 12px; z-index: 5; }
 </style>

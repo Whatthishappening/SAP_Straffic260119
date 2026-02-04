@@ -1,5 +1,8 @@
 package com.mbc.sap.dto;
 
+import java.util.List;
+import java.util.Map;
+
 public class DashboardDto {
 	// 헤더 및 요약 정보
 	private String linetitle;	// 'auth=1' : 전노선 운영현황 , 'auth=2' : O호선 OO역 운영현황
@@ -15,14 +18,15 @@ public class DashboardDto {
 	
 	// 차트 및 그래프용
 	private int hour_usedlocker; // 시간대별 사용률
-	private int weekly_issue;	   // 7일 장애발생 현황
+	private List<Map<String, Object>> weekly_issue; // 7일간 장애발생현황
 	
 	public DashboardDto() {
 		
 	}
 
 	public DashboardDto(String linetitle, String station_id, int linetotal, int stationtotal, int line_stationcount,
-			int incident_count, int total_lockers, int used_lockers, int hour_usedlocker, int weekly_issue) {
+			int incident_count, int total_lockers, int used_lockers, int hour_usedlocker,
+			List<Map<String, Object>> weekly_issue) {
 		super();
 		this.linetitle = linetitle;
 		this.station_id = station_id;
@@ -108,11 +112,11 @@ public class DashboardDto {
 		this.hour_usedlocker = hour_usedlocker;
 	}
 
-	public int getWeekly_issue() {
+	public List<Map<String, Object>> getWeekly_issue() {
 		return weekly_issue;
 	}
 
-	public void setWeekly_issue(int weekly_issue) {
+	public void setWeekly_issue(List<Map<String, Object>> weekly_issue) {
 		this.weekly_issue = weekly_issue;
 	}
 
@@ -123,7 +127,8 @@ public class DashboardDto {
 				+ incident_count + ", total_lockers=" + total_lockers + ", used_lockers=" + used_lockers
 				+ ", hour_usedlocker=" + hour_usedlocker + ", weekly_issue=" + weekly_issue + "]";
 	}
-
+	
+	
 	
 	
 }	

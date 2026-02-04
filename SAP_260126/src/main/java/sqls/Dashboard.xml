@@ -3,21 +3,19 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.mbc.sap.dao.DashboardDao">
-	<resultMap id="DashboardResultMap" type="com.mbc.sap.dto.DashboardDto">
-    	<result property="linetitle" column="linetitle" />
-    	<result property="linetotal" column="linetotal" />
-    	<result property="stationtotal" column="stationtotal" />
-    	<result property="incident_count" column="incident_count" />
-    	<result property="total_lockers" column="total_lockers" />
-    	<result property="used_lockers" column="used_lockers" />
-    	<result property="hour_usedlocker" column="hour_usedlocker" />
-    	<result property="weekly_issue" column="weekly_issue" />
-    	<result property="station_id" column="station_id"/>
-    	<result property="line_stationcount" column="line_stationcount"/>
-	</resultMap>
-	
+    <resultMap id="DashboardResultMap" type="com.mbc.sap.dto.DashboardDto">
+        <result property="linetitle" column="linetitle" />
+        <result property="linetotal" column="linetotal" />
+        <result property="stationtotal" column="stationtotal" />
+        <result property="incident_count" column="incident_count" />
+        <result property="total_lockers" column="total_lockers" />
+        <result property="used_lockers" column="used_lockers" />
+        <result property="hour_usedlocker" column="hour_usedlocker" />
+        <result property="station_id" column="station_id"/>
+        <result property="line_stationcount" column="line_stationcount"/>
+        </resultMap>
 
-	<select id="getdashboard" resultMap="DashboardResultMap">
+<select id="getdashboard" resultMap="DashboardResultMap">
         SELECT 
             /* 1. 제목 및 데이터 기준 ID 설정 */
             <choose>
@@ -26,7 +24,7 @@
                     NULL AS station_id
                 </when>
                 <otherwise>
-                    (SELECT line_name || ' | ' || station_name || ' 운영현황' 
+                    (SELECT line_name || ' 운영현황' 
                      FROM storage.local_amenities 
                      WHERE station_id = #{station_id} 
                      LIMIT 1) AS linetitle,
@@ -38,7 +36,7 @@
             (SELECT COUNT(DISTINCT line_name) FROM storage.local_amenities) AS linetotal,
             (SELECT COUNT(*) FROM storage.local_amenities) AS stationtotal,
             
-            /* [추가 포인트] 해당 호선별 역 개수 (Auth=2일 때만 station_id 첫자리로 계산) */
+            /* 해당 호선별 역 개수 */
             <choose>
                 <when test='auth != null and auth.equals("2") and station_id != null'>
                     (SELECT COUNT(*) 
@@ -48,7 +46,7 @@
                 <otherwise>0</otherwise>
             </choose> AS line_stationcount,
 
-            /* 3. 장애 / 이슈 건수 필터링 */
+            /* 3. 현재 미해결 장애 건수 (담당역 1:1 매칭으로 수정) */
             (SELECT COUNT(*) FROM storage.incident 
              WHERE incident_status IN ('1', '2')
              <if test='auth != null and auth.equals("2")'>
@@ -56,17 +54,17 @@
              </if>
             ) AS incident_count,
 
-            /* 4. 총 물품보관함 개수 필터링 */
+            /* 4. 총 물품보관함 개수 (호선 기준) */
             COALESCE((
                 SELECT SUM(li.local_small + li.local_middle + li.local_large)
                 FROM storage.locker_inventory li
+                JOIN storage.local l ON li.local_id = l.local_id
                 <if test='auth != null and auth.equals("2")'>
-                    JOIN storage.local l ON li.local_id = l.local_id
-                    WHERE l.station_id = #{station_id}
+                    WHERE SUBSTRING(l.station_id, 1, 1) = SUBSTRING(#{station_id}, 1, 1)
                 </if>
             ), 0) AS total_lockers,
 
-            /* 5. 사용 중인 물품보관함 개수 필터링 */
+            /* 5. 사용 중인 물품보관함 개수 (호선 기준) */
             COALESCE((
                 SELECT SUM((li.local_small + li.local_middle + li.local_large) - 
                            (lu.able_small + lu.able_middle + lu.able_large))
@@ -75,13 +73,13 @@
                     SELECT DISTINCT ON (local_id) * FROM storage.locker_usage 
                     ORDER BY local_id, observed_at DESC
                 ) lu ON li.local_id = lu.local_id
+                JOIN storage.local l ON li.local_id = l.local_id
                 <if test='auth != null and auth.equals("2")'>
-                    JOIN storage.local l ON li.local_id = l.local_id
-                    WHERE l.station_id = #{station_id}
+                    WHERE SUBSTRING(l.station_id, 1, 1) = SUBSTRING(#{station_id}, 1, 1)
                 </if>
             ), 0) AS used_lockers,
 
-            /* 6. 시간대별 사용률(평균) 필터링 */
+            /* 6. 시간대별 사용률(평균) */
             COALESCE((
                 SELECT ROUND(AVG(((li.local_small + li.local_middle + li.local_large) - 
                                   (lu.able_small + lu.able_middle + lu.able_large))::numeric / 
@@ -91,22 +89,28 @@
                     SELECT DISTINCT ON (local_id) * FROM storage.locker_usage 
                     ORDER BY local_id, observed_at DESC
                 ) lu ON li.local_id = lu.local_id
+                JOIN storage.local l ON li.local_id = l.local_id
                 <if test='auth != null and auth.equals("2")'>
-                    JOIN storage.local l ON li.local_id = l.local_id
-                    WHERE l.station_id = #{station_id}
+                    WHERE SUBSTRING(l.station_id, 1, 1) = SUBSTRING(#{station_id}, 1, 1)
                 </if>
-            ), 0) AS hour_usedlocker,
+            ), 0) AS hour_usedlocker
+    </select>
 
-            /* 7. 최근 7일 장애 발생 현황 필터링 */
-            (SELECT COUNT(*) FROM storage.incident 
-             WHERE create_at >= CURRENT_DATE - INTERVAL '7 days'
-             <if test='auth != null and auth.equals("2")'>
-                 AND incident_station_id = #{station_id}
-             </if>
-            ) AS weekly_issue
+    <select id="getWeeklyIncidents" resultType="map">
+        SELECT 
+            TO_CHAR(days.day, 'MM/DD') as "date",
+            COUNT(i.incident_id) as "count"
+        FROM (
+            /* 오늘부터 6일 전까지의 날짜 시퀀스 생성 */
+            SELECT generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, '1 day')::date as day
+        ) days
+        LEFT JOIN storage.incident i ON DATE(i.create_at) = days.day
+        <if test='auth != null and auth.equals("2")'>
+            /* 담당자 권한일 때 해당 호선(첫자리) 데이터만 필터링 */
+            AND SUBSTRING(i.incident_station_id, 1, 1) = SUBSTRING(#{station_id}, 1, 1)
+        </if>
+        GROUP BY days.day
+        ORDER BY days.day ASC
     </select>
 
 </mapper>
-
-
-
