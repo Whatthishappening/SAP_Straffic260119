@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mbc.sap.dao.IncidentDao">
+
+    <resultMap id="StatusResultMap" type="com.mbc.sap.dto.IncidentDto">
+        <id column="incident_id" property="incident_id"/>
+        <result column="incident_title" property="incident_title"/>
+        <result column="incident_line_name" property="incident_line_name"/>
+        <result column="incident_station_id" property="incident_station_id"/>
+        <result column="incident_station_name" property="incident_station_name"/>
+        <result column="incident_content" property="incident_content"/>
+        <result column="incident_status" property="incident_status"/>
+        <result column="incident_severity" property="incident_severity"/>
+        <result column="user_id" property="user_id"/>
+        <result column="user_name" property="user_name"/>
+        <result column="create_at" property="create_at"/>
+        <result column="complete_at" property="complete_at"/>
+        <result column="comment_cnt" property="comment_cnt"/>
+    </resultMap>
+
+    <sql id="incidentFilters">
+        <where>
+            create_at IS NOT NULL
+            <if test="status == 'active'">
+                AND incident_status IN ('1', '2')
+            </if>
+            <if test="status == 'resolved'">
+                AND incident_status IN ('3', '4')
+            </if>
+            
+            <if test="keyword != null and keyword != ''">
+                <choose>
+                    <when test="category == 'title'">
+                        AND incident_title LIKE CONCAT('%', #{keyword}, '%')
+                    </when>
+                    <when test="category == 'user'">
+                        AND user_name LIKE CONCAT('%', #{keyword}, '%')
+                    </when>
+                    <when test="category == 'station'">
+                        AND incident_station_name LIKE CONCAT('%', #{keyword}, '%')
+                    </when>
+                </choose>
+            </if>
+
+            <if test="severity != null and severity != ''">
+                AND incident_severity = #{severity}
+            </if>
+            <if test="line_name != null and line_name != ''">
+                AND incident_line_name = #{line_name}
+            </if>
+            <if test="station_name != null and station_name != ''">
+                AND incident_station_name = #{station_name}
+            </if>
+        </where>
+    </sql>
+
+    <select id="get_incidentlist" parameterType="com.mbc.sap.dto.Incidentparam" resultMap="StatusResultMap">
+        SELECT 
+            i.*, 
+            (SELECT COUNT(*) 
+             FROM storage.incident_comment c 
+             WHERE c.incident_id = i.incident_id 
+               AND c.create_at IS NOT NULL) AS comment_cnt  
+        FROM storage.incident i
+        <include refid="incidentFilters" />
+        ORDER BY 
+        <choose>
+            <when test="sortOrder == 'asc'">i.create_at ASC</when>
+            <otherwise>i.create_at DESC</otherwise>
+        </choose>
+        LIMIT 10 OFFSET (${pageNumber} * 10)
+    </select>
+
+    <select id="count_incident" parameterType="com.mbc.sap.dto.Incidentparam" resultType="int">
+        SELECT COUNT(*) 
+        FROM storage.incident
+        <include refid="incidentFilters" />
+    </select>
+
+    <select id="get_incident_detail" parameterType="String" resultMap="StatusResultMap">
+        SELECT * FROM storage.incident
+        WHERE incident_id = #{incident_id}::INTEGER
+    </select>
+    
+    <insert id="create_incident" parameterType="com.mbc.sap.dto.IncidentDto">
+        INSERT INTO storage.incident (
+            incident_title, incident_line_name, incident_station_id, 
+            incident_station_name, incident_content, incident_status, 
+            incident_severity, user_id, user_name
+        ) VALUES (
+            #{incident_title}, #{incident_line_name}, #{incident_station_id}, 
+            #{incident_station_name}, #{incident_content}, '1', 
+            #{incident_severity}, #{user_id}, #{user_name}
+        )
+    </insert>
+
+    <update id="update_incident" parameterType="map">
+        UPDATE storage.incident
+        <set>
+            <if test="incident_title != null and incident_title != ''">incident_title = #{incident_title},</if>
+            <if test="incident_content != null and incident_content != ''">incident_content = #{incident_content},</if>
+            <if test="incident_severity != null">incident_severity = #{incident_severity},</if>
+            <if test="incident_line_name != null">incident_line_name = #{incident_line_name},</if>
+            <if test="incident_station_id != null">incident_station_id = #{incident_station_id},</if>
+            <if test="incident_station_name != null">incident_station_name = #{incident_station_name},</if>
+        </set>
+        WHERE incident_id = #{incident_id}::INTEGER
+    </update>
+
+    <update id="update_incident_status" parameterType="map">
+        UPDATE storage.incident
+        SET incident_status = #{incident_status}
+        WHERE incident_id = #{incident_id}::INTEGER
+    </update>
+	
+	<update id="update_incident_statusBatch" parameterType="map">
+    UPDATE storage.incident
+    <set>
+        <if test="updateType == 'status'">
+            incident_status = #{updateValue},
+        </if>
+        <if test="updateType == 'severity'">
+            incident_severity = #{updateValue},
+        </if>
+        <if test="updateType == 'line'">
+            incident_line_name = #{updateValue},
+        </if>
+        <if test="updateType == 'station'">
+            incident_station_name = #{updateValue},
+        </if>
+    </set>
+    WHERE incident_id IN
+    <foreach collection="incident_id" item="id" open="(" separator="," close=")">
+        #{id}
+    </foreach>
+</update>
+</mapper>
