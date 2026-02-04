@@ -13,10 +13,11 @@
     	<result property="hour_usedlocker" column="hour_usedlocker" />
     	<result property="weekly_issue" column="weekly_issue" />
     	<result property="station_id" column="station_id"/>
+    	<result property="line_stationcount" column="line_stationcount"/>
 	</resultMap>
 	
 
-<select id="getdashboard" resultMap="DashboardResultMap">
+	<select id="getdashboard" resultMap="DashboardResultMap">
         SELECT 
             /* 1. 제목 및 데이터 기준 ID 설정 */
             <choose>
@@ -33,10 +34,20 @@
                 </otherwise>
             </choose>,
 
-            /* 2. 전체 노선 수 및 역 수 (전체 현황용) */
+            /* 2. 전체 노선 수 및 전체 역 수 */
             (SELECT COUNT(DISTINCT line_name) FROM storage.local_amenities) AS linetotal,
             (SELECT COUNT(*) FROM storage.local_amenities) AS stationtotal,
             
+            /* [추가 포인트] 해당 호선별 역 개수 (Auth=2일 때만 station_id 첫자리로 계산) */
+            <choose>
+                <when test='auth != null and auth.equals("2") and station_id != null'>
+                    (SELECT COUNT(*) 
+                     FROM storage.local_amenities 
+                     WHERE SUBSTRING(station_id, 1, 1) = SUBSTRING(#{station_id}, 1, 1))
+                </when>
+                <otherwise>0</otherwise>
+            </choose> AS line_stationcount,
+
             /* 3. 장애 / 이슈 건수 필터링 */
             (SELECT COUNT(*) FROM storage.incident 
              WHERE incident_status IN ('1', '2')
@@ -94,6 +105,7 @@
              </if>
             ) AS weekly_issue
     </select>
+
 </mapper>
 
 

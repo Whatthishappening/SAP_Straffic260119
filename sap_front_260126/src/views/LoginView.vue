@@ -117,7 +117,7 @@ export default {
             user_email: user.user_email
           });
 
-          this.$router.push('dashboard');
+          this.$router.push('home');
         })
         .catch(err => {
           console.error(err);

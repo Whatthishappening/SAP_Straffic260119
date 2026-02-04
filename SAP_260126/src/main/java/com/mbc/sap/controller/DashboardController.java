@@ -30,13 +30,4 @@ public class DashboardController {
 		return ResponseEntity.ok(service.getDashboard(auth, station_id));
 	}
 
-	
-	/*
-	// 테스트할 때만 잠시 세션 대신 @RequestParam을 써보세요!
-	@GetMapping("testdashboard")
-	public DashboardDto testdashboard(@RequestParam("auth") String auth, 
-	                                 @RequestParam(value = "station_id", required = false) String station_id) {
-	    return service.getDashboard(auth, station_id);
-	}
-	*/
 }

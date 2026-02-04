@@ -6,6 +6,7 @@ public class DashboardDto {
 	private String station_id;	// 역 ID
 	private int linetotal;		// 전체 노선수
 	private int stationtotal;	// 전체 역수
+	private int line_stationcount; // 해당 호선의 역수 
 	
 	// 총보관함 갯수, 사용중인 갯수 
 	private int incident_count;			// 장애발생건수
@@ -20,13 +21,14 @@ public class DashboardDto {
 		
 	}
 
-	public DashboardDto(String linetitle, String station_id, int linetotal, int stationtotal, int incident_count,
-			int total_lockers, int used_lockers, int hour_usedlocker, int weekly_issue) {
+	public DashboardDto(String linetitle, String station_id, int linetotal, int stationtotal, int line_stationcount,
+			int incident_count, int total_lockers, int used_lockers, int hour_usedlocker, int weekly_issue) {
 		super();
 		this.linetitle = linetitle;
 		this.station_id = station_id;
 		this.linetotal = linetotal;
 		this.stationtotal = stationtotal;
+		this.line_stationcount = line_stationcount;
 		this.incident_count = incident_count;
 		this.total_lockers = total_lockers;
 		this.used_lockers = used_lockers;
@@ -64,6 +66,14 @@ public class DashboardDto {
 
 	public void setStationtotal(int stationtotal) {
 		this.stationtotal = stationtotal;
+	}
+
+	public int getLine_stationcount() {
+		return line_stationcount;
+	}
+
+	public void setLine_stationcount(int line_stationcount) {
+		this.line_stationcount = line_stationcount;
 	}
 
 	public int getIncident_count() {
@@ -109,10 +119,11 @@ public class DashboardDto {
 	@Override
 	public String toString() {
 		return "DashboardDto [linetitle=" + linetitle + ", station_id=" + station_id + ", linetotal=" + linetotal
-				+ ", stationtotal=" + stationtotal + ", incident_count=" + incident_count + ", total_lockers="
-				+ total_lockers + ", used_lockers=" + used_lockers + ", hour_usedlocker=" + hour_usedlocker
-				+ ", weekly_issue=" + weekly_issue + "]";
+				+ ", stationtotal=" + stationtotal + ", line_stationcount=" + line_stationcount + ", incident_count="
+				+ incident_count + ", total_lockers=" + total_lockers + ", used_lockers=" + used_lockers
+				+ ", hour_usedlocker=" + hour_usedlocker + ", weekly_issue=" + weekly_issue + "]";
 	}
+
 	
 	
 }	
