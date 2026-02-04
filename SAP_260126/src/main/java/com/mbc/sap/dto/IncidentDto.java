@@ -25,6 +25,10 @@ public class IncidentDto {
 				+ user_id + ", user_name=" + user_name + ", create_at=" + create_at + ", complete_at=" + complete_at
 				+ ", comment_cnt=" + comment_cnt + "]";
 	}
+	
+    public Integer getComment_cnt() {
+        return comment_cnt;
+    }
 	public Integer getIncident_id() {
 		return incident_id;
 	}
