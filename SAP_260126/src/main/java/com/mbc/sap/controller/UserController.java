@@ -88,7 +88,7 @@ public class UserController {
     @PostMapping("update_user") 
     public String update_user(@RequestBody UserDto dto) {
        
-        System.out.println("전달받은 데이터 확인: " + dto.toString()); 
+        //System.out.println("전달받은 데이터 확인: " + dto.toString()); 
         
         boolean isS = service.update_user(dto);
         
@@ -101,7 +101,7 @@ public class UserController {
 	
     @GetMapping("get_newuserlist")
     public Map<String, Object> getNewUserList(UserParam param) {
-        System.out.println("요청된 페이지: " + param.getPageNumber());
+        //System.out.println("요청된 페이지: " + param.getPageNumber());
         
         List<UserDto> list = service.get_newuserlist(param);
         
@@ -120,7 +120,7 @@ public class UserController {
     @PostMapping("reject_user") 
     public String reject_user(@RequestBody UserDto dto) {
      
-        System.out.println("전달받은 데이터 확인: " + dto.toString()); 
+        //System.out.println("전달받은 데이터 확인: " + dto.toString()); 
         
         boolean isS = service.reject_user(dto);
         
@@ -134,7 +134,7 @@ public class UserController {
     @PostMapping("approve_user") 
     public String approve_user(@RequestBody UserDto dto) {
       
-        System.out.println("전달받은 데이터 확인: " + dto.toString()); 
+        //System.out.println("전달받은 데이터 확인: " + dto.toString()); 
         
         boolean isS = service.approve_user(dto);
         
@@ -150,9 +150,9 @@ public class UserController {
         //현재 페이지 번호를 바탕으로 DB 시작점(offset) 계산
         param.setOffset((param.getPageNumber() - 1) * 5); 
 
-        System.out.println("요청된 페이지: " + param.getPageNumber());
-        System.out.println("계산된 오프셋: " + param.getOffset()); // 로그로 확인 가능
-        System.out.println("검색어: " + param.getSearchKeyword());
+        //System.out.println("요청된 페이지: " + param.getPageNumber());
+        //System.out.println("계산된 오프셋: " + param.getOffset()); // 로그로 확인 가능
+        //System.out.println("검색어: " + param.getSearchKeyword());
         
         // 1. 리스트 조회 (이제 계산된 offset이 적용된 쿼리가 나갑니다)
         List<UserDto> list = service.get_olduserlist(param);
@@ -170,7 +170,7 @@ public class UserController {
     
     @PostMapping("approve_users_batch")
     public String approveUsersBatch(@RequestBody Map<String, Object> params) {
-    	  System.out.println("전체 추가 버튼 활성화");
+    	  //System.out.println("전체 추가 버튼 활성화");
         List<String> userIds = (List<String>) params.get("userIds");
         boolean isSuccess = service.approveUsersBatch(userIds);
         return isSuccess ? "YES" : "NO";
@@ -178,7 +178,7 @@ public class UserController {
     
     @PostMapping("reject_usersBatch")
     public String reject_usersBatch(@RequestBody Map<String, Object> params) {
-    	  System.out.println("전체 삭제 버튼");
+    	  //System.out.println("전체 삭제 버튼");
         List<String> userIds = (List<String>) params.get("userIds");
         boolean isSuccess = service.reject_usersBatch(userIds);
         return isSuccess ? "YES" : "NO";
@@ -187,7 +187,7 @@ public class UserController {
     @PostMapping("update_olduser_auth") 
     public String  update_olduser_auth(@RequestBody UserDto dto) {
        
-        System.out.println("전달받은 데이터 확인: " + dto.toString()); 
+        //System.out.println("전달받은 데이터 확인: " + dto.toString()); 
         
         boolean isS = service. update_olduser_auth(dto);
         

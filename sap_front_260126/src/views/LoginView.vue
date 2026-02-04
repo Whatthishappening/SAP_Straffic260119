@@ -2,40 +2,31 @@
   <div class="login-bg">
     <div class="login-card">
 
-      <!-- 로고 영역 -->
       <div class="logo-row">
         <img src="../assets/로고.png" class="logo-img" />
       </div>
 
-      <!-- 타이틀 -->
       <div class="login-title">로그인</div>
 
-      <!-- 아이디 -->
       <div class="input-box">
         <span class="icon">👤</span>
-        <input v-model="user_id" placeholder="아이디" />
+        <input v-model.trim="user_id" placeholder="아이디" />
       </div>
 
-      <!-- 비밀번호 -->
       <div class="input-box">
         <span class="icon">🔒</span>
-        <input v-model="user_pw" type="password" placeholder="비밀번호" />
+        <input v-model="user_pw" type="password" placeholder="비밀번호" @keyup.enter="login" />
       </div>
 
-      <!-- ID 저장 -->
       <div class="save-id">
         <input type="checkbox" v-model="save_id" @click="saveId"/>
         <span>ID 저장</span>
       </div>
 
-      <!-- 로그인 버튼 -->
       <button class="login-btn" @click="login">로그인</button>
 
-      <!-- 회원가입 텍스트 (이동만) -->
       <div class="join-text">
-            <p @click="$emit('go-regi')" style="cursor:pointer">
-                회원가입
-            </p>
+        <p @click="$emit('go-regi')" style="cursor:pointer">회원가입</p>
       </div>
 
     </div>
@@ -46,180 +37,106 @@
 import { useCookies } from 'vue3-cookies';
 const { cookies } = useCookies();
 import axios from 'axios'
-import Regi from './regi.vue';
 
-export default{
+export default {
   data() {
     return {
-      user_id : '',
-      user_pw : '',
-      save_id : false,
-      user_email:''
+      user_id: '',
+      user_pw: '',
+      save_id: false,
+      user_email: ''
     }
   },
-  mounted(){
+  mounted() {
     let userId = cookies.get('userId');
-    if(userId !== null){
+    if (userId !== null) {
       this.save_id = true;
       this.user_id = userId;
-    }else{
+    } else {
       this.save_id = false;
       this.user_id = "";
     }
   },
   methods: {
-      //유저아이디 저장
-      saveId(){
-       if (this.save_id === false && this.user_id.trim() !== "") {
-      cookies.set("userId", this.user_id);
+    saveId() {
+      // 저장 시에도 공백이 제거된 상태로 저장되도록 처리
+      const cleanId = this.user_id.replace(/\s/g, '');
+      if (this.save_id === false && cleanId !== "") {
+        cookies.set("userId", cleanId, "7d");
       } else {
-      cookies.remove("userId");
-       }
-      },
-      login(){
-        let param = {
-         params: {
-        user_id: this.user_id,
-        user_pw: this.user_pw,
-          }
-       }
+        cookies.remove("userId");
+      }
+    },
+
+    login() {
+      // 아이디에서 모든 공백 제거 (중간 공백 포함)
+      const cleanId = this.user_id.replace(/\s/g, '');
+      
+      if (!cleanId || !this.user_pw) {
+        alert("아이디와 비밀번호를 입력해주세요.");
+        return;
+      }
+
+      let param = {
+        params: {
+          user_id: cleanId, 
+          user_pw: this.user_pw,
+        }
+      }
+      
       axios.post('http://localhost:9000/check_login', null, param)
-      .then(resp => {
-        let user = resp.data;
-        console.log("로그인 시도 유저 정보:", user);
-        // 백엔드 응답 데이터 확인 (id가 아니라 user_id로 올 확률이 높음)
-        if (!user || user.user_id === undefined) {
-          alert('아이디 또는 비밀번호가 틀렸습니다');
-          return;
-        }// 2. 권한(auth) 상태별 분기 처리
-      if (user.auth === '3') {
-      // 관리자가 명시적으로 차단했거나 삭제한 경우
-       alert('대기중 계정입니다. 관리자에게 문의하세요.');
-        return;
-      }
-        
-      if (user.auth === '4') {
-      // 관리자가 명시적으로 차단했거나 삭제한 경우
-       alert('비활성화된 계정입니다. 관리자에게 문의하세요.');
-        return;
-      }
+        .then(resp => {
+          let user = resp.data;
 
-        // 세션 저장
-        sessionStorage.setItem("login", JSON.stringify(user));
-        
-        alert('로그인 성공');
+          if (!user || user.user_id === undefined) {
+            alert('아이디 또는 비밀번호가 틀렸습니다');
+            return;
+          }
 
-        
-        this.$emit('login-success', {
-          id: user.user_id,          
-          name: user.user_name,      
-          line_name: user.line_name,
-          station_name: user.station_name,
-          user_email: user.user_email
-        });
-      })
-      .catch(err => {
-        console.error(err);
-        alert('서버 연결에 실패했습니다.');
-      })
+          // [성공 시 아이디 쿠키 갱신] 공백 제거된 버전으로 저장
+          if (this.save_id) {
+            cookies.set("userId", cleanId, "7d");
+          }
+
+          if (user.auth === '3') {
+            alert('대기중 계정입니다. 관리자에게 문의하세요.');
+            return;
+          }
+          if (user.auth === '4') {
+            alert('비활성화된 계정입니다. 관리자에게 문의하세요.');
+            return;
+          }
+
+          sessionStorage.setItem("login", JSON.stringify(user));
+
+          this.$emit('login-success', {
+            id: user.user_id,          
+            name: user.user_name,      
+            line_name: user.line_name,
+            station_name: user.station_name,
+            user_email: user.user_email
+          });
+
+          this.$router.push('home');
+        })
+        .catch(err => {
+          console.error(err);
+          alert('서버 연결에 실패했습니다.');
+        })
+    },
   },
-},
 }
 </script>
 
 <style scoped>
-/* 배경 */
-.login-bg {
-  position: fixed;
-  inset: 0;
-  background: url("../assets/background.png") center / cover no-repeat;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-/* 카드 */
-.login-card {
-  width: 350px;
-  background: linear-gradient(180deg, #3b5bff 0%, #2436b8 100%);
-  border-radius: 12px;
-  padding: 5px 20px 26px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.45);
-  color: #fff;
-}
-
-/* 로고 라인 */
-.logo-row {
-  align-items: center;
-
-}
-
-.logo-img {
-  width: 300px;
-  height: auto;
-  margin-left: 7px;
-}
-
-.logo-sub {
-  font-size: 30px;
-  opacity: 1;
-}
-
-/* 로그인 타이틀 */
-.login-title {
-  text-align: center;
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 10px;
-}
-
-/* 입력 박스 */
-.input-box {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #f4f6ff;
-  border-radius: 8px;
-  padding: 10px 12px;
-  margin-bottom: 10px;
-}
-
-.input-box input {
-  border: none;
-  outline: none;
-  background: transparent;
-  width: 100%;
-  font-size: 13px;
-}
-
-/* ID 저장 */
-.save-id {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 15px;
-  margin: 8px 0 14px;
-}
-
-/* 로그인 버튼 */
-.login-btn {
-  width: 100%;
-  height: 40px;
-  background: linear-gradient(180deg, #5f8bff 0%, #3f6bff 100%);
-  border: none;
-  border-radius: 8px;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-/* 회원가입 텍스트 */
-.join-text {
-  margin-top: 12px;
-  text-align: center;
-  font-size: 12px;
-  opacity: 0.85;
-  cursor: pointer;
-}
+.login-bg { position: fixed; inset: 0; background: url("../assets/background.png") center / cover no-repeat; display: flex; justify-content: center; align-items: center; }
+.login-card { width: 350px; background: linear-gradient(180deg, #3b5bff 0%, #2436b8 100%); border-radius: 12px; padding: 5px 20px 26px; box-shadow: 0 20px 40px rgba(0,0,0,0.45); color: #fff; }
+.logo-row { text-align: center; }
+.logo-img { width: 300px; height: auto; }
+.login-title { text-align: center; font-size: 20px; font-weight: 700; margin-bottom: 10px; }
+.input-box { display: flex; align-items: center; gap: 8px; background: #f4f6ff; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+.input-box input { border: none; outline: none; background: transparent; width: 100%; font-size: 13px; color: #333; }
+.save-id { display: flex; align-items: center; gap: 6px; font-size: 15px; margin: 8px 0 14px; }
+.login-btn { width: 100%; height: 40px; background: linear-gradient(180deg, #5f8bff 0%, #3f6bff 100%); border: none; border-radius: 8px; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
+.join-text { margin-top: 12px; text-align: center; font-size: 12px; opacity: 0.85; }
 </style>
