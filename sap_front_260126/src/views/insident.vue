@@ -90,6 +90,7 @@
             <option v-for="st in stationsInFilterLine" :key="st.station_id" :value="st.station_name">{{ st.station_name }}</option>
           </select>
           <select v-model="filterSort" @change="fetchIssues(true)">
+             <option value="">정렬</option>
             <option value="desc">Newest</option>
             <option value="asc">Oldest</option>
           </select>
@@ -193,7 +194,7 @@ const resetFilter = () => {
   filterSeverity.value = '';
   filterLine.value = '';
   filterStation.value = '';
-  filterSort.value = 'desc';
+  filterSort.value = '';
   // 2. 일괄 선택 상태도 초기화
   clearSelection();
   // 3. 서버에서 데이터 다시 불러오기
