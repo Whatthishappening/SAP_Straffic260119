@@ -101,11 +101,27 @@
 	
 -- );
 
+--날씨 테이블 생성
+CREATE TABLE storage.weather (
+    tm          VARCHAR(14)    NOT NULL, -- 관측시각 (YYYYMMDDHH00)
+    wd          NUMERIC,                 -- 풍향
+    ws          NUMERIC,                 -- 풍속
+    ta          NUMERIC,                 -- 기온
+    hm          NUMERIC,                 -- 습도
+    rn          NUMERIC,                 -- 강수량
+    reg_dt      TIMESTAMP      DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT weather_pkey PRIMARY KEY (tm)
+);
 
+select * from storage.weather;
 
 select * from storage.local_amenities;
 select * from storage.incident;
 select * from storage.locker_usage order by locker_usage.created_at desc
+
+insert into storage.weather
+(tm, wd, ws, ta, hm, rn)
+values('202602051800', 108.0, 25.0, 4.4, -9.0, -9.0)
 
 
 -- select * from storage.user;
