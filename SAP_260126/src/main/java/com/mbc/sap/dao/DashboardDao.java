@@ -13,9 +13,13 @@ import com.mbc.sap.dto.DashboardDto;
 @Repository
 public interface DashboardDao {
 	DashboardDto getdashboard(@Param("auth") String auth, 
-							  @Param("station_id") String station_id);
+							  @Param("station_id") String station_id,
+							  @Param("user_id") String user_id);
 	
 	List<Map<String, Object>> getWeeklyIncidents(@Param("auth") String auth, 
-												 @Param("station_id") String station_id);		
+												 @Param("station_id") String station_id,
+												 @Param("user_id") String user_id);	
+	
+	int insertWeather(DashboardDto dto);
 				
 }

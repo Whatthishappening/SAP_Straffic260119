@@ -21,16 +21,16 @@
       <table class="status-table">
         <thead>
           <tr>
-            <th>역명</th>
-            <th>호선</th>
+            <th style="width: 120px;">역명</th>
+            <th style="width: 80px;">호선</th>
             <th v-if="isVisible('incident_count')">장애발생건수</th>
-            <th v-if="isVisible('lockers')">물품보관함 (실시간/설치)</th>
+            <th v-if="isVisible('lockers')" style="min-width: 180px;">물품보관함 (실시간/설치/사용률)</th>
             <th v-if="isVisible('elevator')">엘리베이터</th>
             <th v-if="isVisible('parking')">환승주차장</th>
             <th v-if="isVisible('wheelchair')">휠체어리프트</th>
             <th v-if="isVisible('civil_service')">무인민원발급기</th>
             <th v-if="isVisible('currency')">환전키오스크</th>
-            <th v-if="isVisible('train_ticket')">기차예매역</th>
+            <th v-if="isVisible('train_ticket')">기차예매</th>
             <th v-if="isVisible('culture')">문화공간</th>
             <th v-if="isVisible('meeting')">만남의장소</th>
             <th v-if="isVisible('lactation')">유아 수유방</th>
@@ -51,7 +51,8 @@
               {{ item.incident_count }}개
             </td>
             <td v-if="isVisible('lockers')">
-              <span class="used-cnt">{{ item.used_lockers }}</span> / {{ item.total_lockers }}개
+              <span class="used-cnt">{{ item.used_lockers }}</span> / {{ item.total_lockers }}개 
+              <span class="usage-text">({{ calculateUsageRate(item.used_lockers, item.total_lockers) }})</span>
             </td>
             <td v-if="isVisible('elevator')">{{ formatStatus(item.elevator) }}</td>
             <td v-if="isVisible('parking')">{{ formatStatus(item.parking) }}</td>
@@ -101,6 +102,13 @@ const getLineColor = (line) => {
 const formatStatus = (val) => (val === 'Y' || val === 'O' ? 'O' : 'X');
 const isVisible = (key) => selectedCategories.value.includes(key);
 
+// 사용률 계산 (한 줄 표현용)
+const calculateUsageRate = (used, total) => {
+  if (!total || total === 0) return '0%';
+  const rate = Math.floor((used / total) * 100);
+  return `${rate}%`;
+};
+
 const handleSearch = async (searchData) => {
   try {
     const res = await axios.get('http://localhost:9000/get_status');
@@ -123,23 +131,13 @@ const handleSearch = async (searchData) => {
       displayList.value = allData;
     }
 
+    // [정렬] 역명 가나다순 -> 역명이 같으면 호선 숫자 순
     displayList.value.sort((a, b) => {
-      if (searchKeyword) {
-        // 1. 역명 가나다순 우선 (을지로3가, 을지로3가, 을지로4가, 을지로4가끼리 묶기 위해)
-        const nameSort = a.station_name.localeCompare(b.station_name);
-        if (nameSort !== 0) return nameSort;
+      const nameSort = a.station_name.localeCompare(b.station_name, 'ko');
+      if (nameSort !== 0) return nameSort;
 
-        // 2. 역명이 같을 경우 호선 숫자 순서 정렬 (1호선 -> 2호선)
-        const lineA = parseInt(a.line_name.replace(/[^0-9]/g, ""));
-        const lineB = parseInt(b.line_name.replace(/[^0-9]/g, ""));
-        return lineA - lineB;
-      }
-
-      // 검색어 없을 시 (전체 검색 등) 기본 호선 우선 정렬
-      const lineA = parseInt(a.line_name.replace(/[^0-9]/g, ""));
-      const lineB = parseInt(b.line_name.replace(/[^0-9]/g, ""));
-      if (lineA !== lineB) return lineA - lineB;
-      return a.station_name.localeCompare(b.station_name);
+      const getLineNum = (str) => parseInt(str.replace(/[^0-9]/g, "")) || 999;
+      return getLineNum(a.line_name) - getLineNum(b.line_name);
     });
 
   } catch (err) { 
@@ -156,9 +154,36 @@ const handleSearch = async (searchData) => {
 .toggle-all-btn { padding: 5px 12px; font-size: 12px; cursor: pointer; background: #f4f4f4; border: 1px solid #ddd; border-radius: 4px; }
 .checkbox-group { display: flex; flex-wrap: wrap; gap: 15px; }
 .table-wrapper { background: #fff; border-radius: 12px; overflow-x: auto; border: 1px solid #eee; }
-.status-table { width: 100%; border-collapse: collapse; text-align: center; min-width: 1100px; table-layout: fixed; }
-.status-table th, .status-table td { padding: 15px; border-bottom: 1px solid #f0f0f0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.status-table th { background: #f8f9fa; border-bottom: 2px solid #eee; font-weight: bold; }
+.status-table { 
+  width: 100%; 
+  border-collapse: collapse; 
+  text-align: center; 
+  min-width: 1200px; 
+  table-layout: auto; /* fixed에서 auto로 변경 */
+}
+
+/* 2. 헤더(th) 설정 수정 */
+.status-table th { 
+  background: #f8f9fa; 
+  border-bottom: 2px solid #eee; 
+  font-weight: bold;
+  padding: 10px 5px;
+  font-size: 13px; /* 글자가 너무 크면 살짝 줄임 */
+  line-height: 1.2;
+  vertical-align: middle;
+  /* white-space: nowrap;  <-- 이 줄을 삭제하거나 아래처럼 변경 */
+  white-space: normal;  /* 긴 제목은 두 줄로 나올 수 있게 허용 */
+  word-break: keep-all; /* 단어 단위로 줄바꿈되어 깔끔하게 유지 */
+}
+
+/* 3. 데이터 셀(td) 설정 */
+.status-table td { 
+  padding: 12px 8px; 
+  border-bottom: 1px solid #f0f0f0; 
+  font-size: 14px; 
+  white-space: nowrap; /* 데이터는 한 줄로 유지 */
+  /* overflow, text-overflow 관련 설정 삭제 */
+}
 .line-cell { width: 100px; }
 .line-badge { 
   display: inline-block;

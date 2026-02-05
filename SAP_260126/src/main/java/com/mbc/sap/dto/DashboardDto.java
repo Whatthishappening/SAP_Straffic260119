@@ -20,13 +20,22 @@ public class DashboardDto {
 	private int hour_usedlocker; // 시간대별 사용률
 	private List<Map<String, Object>> weekly_issue; // 7일간 장애발생현황
 	
+	// 날씨 정보
+	private String weather_tm;	// 관측시간
+	private double weather_wd;	// 풍향
+	private double weather_ws;	// 풍속
+	private double weather_ta;	// 기온
+	private double weather_hm;	// 습도
+	private double weather_rn;	// 강수량
+	
 	public DashboardDto() {
 		
 	}
 
 	public DashboardDto(String linetitle, String station_id, int linetotal, int stationtotal, int line_stationcount,
 			int incident_count, int total_lockers, int used_lockers, int hour_usedlocker,
-			List<Map<String, Object>> weekly_issue) {
+			List<Map<String, Object>> weekly_issue, String weather_tm, double weather_wd, double weather_ws,
+			double weather_ta, double weather_hm, double weather_rn) {
 		super();
 		this.linetitle = linetitle;
 		this.station_id = station_id;
@@ -38,6 +47,12 @@ public class DashboardDto {
 		this.used_lockers = used_lockers;
 		this.hour_usedlocker = hour_usedlocker;
 		this.weekly_issue = weekly_issue;
+		this.weather_tm = weather_tm;
+		this.weather_wd = weather_wd;
+		this.weather_ws = weather_ws;
+		this.weather_ta = weather_ta;
+		this.weather_hm = weather_hm;
+		this.weather_rn = weather_rn;
 	}
 
 	public String getLinetitle() {
@@ -120,13 +135,67 @@ public class DashboardDto {
 		this.weekly_issue = weekly_issue;
 	}
 
+	public String getWeather_tm() {
+		return weather_tm;
+	}
+
+	public void setWeather_tm(String weather_tm) {
+		this.weather_tm = weather_tm;
+	}
+
+	public double getWeather_wd() {
+		return weather_wd;
+	}
+
+	public void setWeather_wd(double weather_wd) {
+		this.weather_wd = weather_wd;
+	}
+
+	public double getWeather_ws() {
+		return weather_ws;
+	}
+
+	public void setWeather_ws(double weather_ws) {
+		this.weather_ws = weather_ws;
+	}
+
+	public double getWeather_ta() {
+		return weather_ta;
+	}
+
+	public void setWeather_ta(double weather_ta) {
+		this.weather_ta = weather_ta;
+	}
+
+	public double getWeather_hm() {
+		return weather_hm;
+	}
+
+	public void setWeather_hm(double weather_hm) {
+		this.weather_hm = weather_hm;
+	}
+
+	public double getWeather_rn() {
+		return weather_rn;
+	}
+
+	public void setWeather_rn(double weather_rn) {
+		this.weather_rn = weather_rn;
+	}
+
 	@Override
 	public String toString() {
 		return "DashboardDto [linetitle=" + linetitle + ", station_id=" + station_id + ", linetotal=" + linetotal
 				+ ", stationtotal=" + stationtotal + ", line_stationcount=" + line_stationcount + ", incident_count="
 				+ incident_count + ", total_lockers=" + total_lockers + ", used_lockers=" + used_lockers
-				+ ", hour_usedlocker=" + hour_usedlocker + ", weekly_issue=" + weekly_issue + "]";
+				+ ", hour_usedlocker=" + hour_usedlocker + ", weekly_issue=" + weekly_issue + ", weather_tm="
+				+ weather_tm + ", weather_wd=" + weather_wd + ", weather_ws=" + weather_ws + ", weather_ta="
+				+ weather_ta + ", weather_hm=" + weather_hm + ", weather_rn=" + weather_rn + "]";
 	}
+	
+	
+
+	
 	
 	
 	

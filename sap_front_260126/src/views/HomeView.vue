@@ -34,7 +34,7 @@
 
       <div class="v-divider"></div>
 
-      <div class="summary-item incident-widget" @click="goIncidentBoard">
+      <div class="summary-item incident-widget" @click="goBackToList">
         <span class="item-label">장애 / 이슈 현황</span>
         <div class="issue-box-vertical large">
           <img src="@/assets/경고표시.png" alt="경고" class="issue-icon-big" />
@@ -49,7 +49,7 @@
 
       <div class="summary-item weather-widget" @click="goWeatherDetail">
         <span class="item-label">오늘의 날씨</span>
-        <div class="weather-content">
+        <div class="weather-content" v-if="seoulWeather.tm">
           <div class="weather-top">
             <span class="weather-icon">{{ weatherIcon }}</span>
             <span class="weather-temp">{{ seoulWeather.ta }}°</span>
@@ -69,6 +69,9 @@
           <div class="weather-time">
             서울기상관측소 | {{ formatObsTime(seoulWeather.tm) }} 관측
           </div>
+        </div>
+        <div v-else class="weather-loading">
+          데이터 업데이트 중...
         </div>
       </div>
 
@@ -90,14 +93,14 @@
 
     <div class="middle-widgets">
       <div class="card">
-        <h3>시간대별 사용률</h3>
+        <h3>실시간 이용률 현황</h3>
         <div class="canvas-wrapper">
           <canvas id="hourlyChart"></canvas>
         </div>
       </div>
       
       <div class="card">
-        <h3>최근 7일 장애 발생 현황</h3>
+        <h3>장애발생 현황 (최근 7일)</h3>
         <div class="canvas-wrapper">
           <canvas id="weeklyChart"></canvas>
           <div v-if="!hasWeeklyData" class="no-data-overlay">데이터 집계 대기 중</div>
@@ -106,7 +109,7 @@
 
       <div class="card clickable-card" @click="goTrainInfo">
         <h3>실시간 지하철 정보 <span v-if="userAuth === '2'">({{ userLine }}호선)</span><span v-else>(전체)</span></h3>
-        <div class="iframe-mask image-display-container">
+        <div class="image-display-container">
           <img :src="getLineImage()" alt="노선도 이미지" class="route-map-img-fixed" />
           <div class="hover-info">클릭 시 실시간 위치 페이지로 이동</div>
         </div>
@@ -117,46 +120,145 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue';
-import { useRouter } from 'vue-router'; // 이 부분 확인 필수
+import { useRouter } from 'vue-router'; 
 import axios from 'axios';
 import Chart from 'chart.js/auto';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 
-const router = useRouter(); // router 초기화
+const router = useRouter(); 
 const dashboardData = ref(null);
 const userLine = ref(""); 
 const userAuth = ref("");
 const hasWeeklyData = ref(false); 
-let chartInstances = {};
+const emit = defineEmits(['go-list']);
 
-// 날씨 데이터 & 로직 (건드리지 않음)
-const seoulWeather = ref({ tm: '202602040900', stn: 108, wd: 5, ws: 2.1, ta: 2.0, hm: 75, rn: -9.0 });
-const windDirText = computed(() => {
-  const dirs = ['북', '북동', '동', '남동', '남', '남서', '서', '북서', '북'];
-  return dirs[Math.round(seoulWeather.value.wd / 45)] + '풍';
-});
-const displayRain = computed(() => seoulWeather.value.rn < 0 ? '0mm' : seoulWeather.value.rn + 'mm');
-const feelsLikeTemp = computed(() => {
-  const t = seoulWeather.value.ta;
-  const v = seoulWeather.value.ws;
-  return (13.12 + (0.6215 * t) - (11.37 * Math.pow(v, 0.16)) + (0.3965 * t * Math.pow(v, 0.16))).toFixed(1);
-});
-const weatherStatus = computed(() => seoulWeather.value.rn > 0 ? '비/눈' : (seoulWeather.value.hm > 70 ? '흐림' : '맑음'));
-const weatherIcon = computed(() => seoulWeather.value.rn > 0 ? '☔' : (seoulWeather.value.hm > 70 ? '☁️' : '☀️'));
-const formatObsTime = (tm) => tm ? `${tm.substring(8, 10)}:${tm.substring(10, 12)}` : '';
+let lockerChart = null;
+let hourlyChart = null;
+let weeklyChartInstance = null;
 
-// 이동 관련 함수들
-const goIncidentBoard = () => router.push('/incident'); // 장애 게시판 이동 로직
-const goTrainInfo = () => window.open("https://smss.seoulmetro.co.kr/traininfo/traininfoUserView.do", '_blank');
-const goWeatherDetail = () => window.open("https://weather.naver.com/map/", '_blank');
+const seoulWeather = ref({ tm: '', wd: 0, ws: 0, ta: 0, hm: 0, rn: 0 });
 
-const getLineImage = () => {
-  let fileName = "Lineall.png";
-  if (userAuth.value === "2" && userLine.value) fileName = `Line${userLine.value}.png`;
-  return new URL(`../assets/Line/${fileName}`, import.meta.url).href;
+const fetchData = async () => {
+  try {
+    const loginData = sessionStorage.getItem("login") || sessionStorage.getItem("user_info");
+    if (!loginData) return;
+    const user = JSON.parse(loginData);
+    userAuth.value = String(user.auth);
+
+    const res = await axios.get('http://localhost:9000/get_dashboard', { 
+      params: { auth: userAuth.value, station_id: user.station_id, user_id: user.user_id } 
+    });
+
+    if (res.data) {
+      dashboardData.value = res.data;
+      seoulWeather.value = {
+        tm: res.data.weather_tm, ta: res.data.weather_ta, ws: res.data.weather_ws,
+        hm: res.data.weather_hm, rn: res.data.weather_rn, wd: res.data.weather_wd
+      };
+
+      if (userAuth.value === '2') {
+        // DB에서 받아온 최신 station_id 기준으로 호선 설정
+        const currentStationId = res.data.station_id || user.station_id;
+        userLine.value = String(currentStationId).charAt(0);
+      }
+
+      await nextTick();
+      setTimeout(initCharts, 50);
+    }
+  } catch (err) {
+    console.error("데이터 로딩 오류:", err);
+  }
 };
 
-// 데이터 바인딩 및 차트 로직 (기존과 동일)
+const initCharts = () => {
+  if (lockerChart) { lockerChart.destroy(); lockerChart = null; }
+  if (hourlyChart) { hourlyChart.destroy(); hourlyChart = null; }
+  if (weeklyChartInstance) { weeklyChartInstance.destroy(); weeklyChartInstance = null; }
+
+  const data = dashboardData.value;
+  if (!data) return;
+
+  // --- [차트 1] 물품보관함 이용 현황 ---
+  const ctxUsed = document.getElementById('usedStorageChart')?.getContext('2d');
+  if (ctxUsed) {
+    const total = Number(total_lockers.value || 0);
+    const used = Number(used_lockers.value || 0);
+    const available = Math.max(0, total - used);
+    lockerChart = new Chart(ctxUsed, { 
+      type: 'doughnut', 
+      data: { datasets: [{ data: [used, available], backgroundColor: ['#36A2EB', '#f2f2f2'], borderWidth: 0 }] },
+      options: { cutout: '70%', responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false }, datalabels: { display: false } } }
+    });
+  }
+
+  // --- [차트 2] 실시간 이용률 현황 ---
+  const ctxHourly = document.getElementById('hourlyChart')?.getContext('2d');
+  if (ctxHourly) {
+    const labels = ['08시', '11시', '14시', '17시', '20시', '23시'];
+    const datasets = [];
+    const rawRate = Number(data.hour_usedlocker || 0);
+    const fallback = [rawRate * 0.8, rawRate * 0.9, rawRate, rawRate * 1.1, rawRate * 1.05, rawRate];
+    if (userAuth.value === '1') {
+      datasets.push({ label: '전체 이용률', data: data.total_hourly_rate || fallback, borderColor: '#36A2EB', backgroundColor: 'rgba(54, 162, 235, 0.2)', fill: true, tension: 0.4 });
+    } else {
+      datasets.push({ label: `${userLine.value}호선 이용률`, data: data.line_hourly_rate || fallback, borderColor: getLineColor(userLine.value), fill: true, tension: 0.4 });
+      datasets.push({ label: '본인 역 이용률', data: data.station_hourly_rate || fallback.map(v => v * 0.9), borderColor: '#FF6384', borderWidth: 3, fill: false, tension: 0.4 });
+    }
+    hourlyChart = new Chart(ctxHourly, { type: 'line', data: { labels, datasets }, plugins: [ChartDataLabels], options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, min: 0, max: 100 } }, plugins: { datalabels: { align: 'top', formatter: (v) => Math.round(v) + '%' } } } });
+  }
+
+  // --- [차트 3] 장애발생 현황 (최신 역 정보 즉시 반영) ---
+  const ctxWeekly = document.getElementById('weeklyChart')?.getContext('2d');
+  const weeklyData = data.weekly_issue || [];
+  
+  // 핵심: 세션이 아닌 DB 응답값(data.station_id)을 참조하여 변경사항 즉시 매칭
+  const myStationId = String(data.station_id || '');
+
+  if (ctxWeekly) {
+    hasWeeklyData.value = true;
+    const labels = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      labels.push(`${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`);
+    }
+
+    const datasets = [];
+    if (userAuth.value === '1') {
+      datasets.push({
+        type: 'bar', label: '전체 장애건수', backgroundColor: '#E0E0E0', order: 2,
+        data: labels.map(dateLabel => weeklyData.filter(d => String(d.date) === dateLabel).reduce((acc, cur) => acc + (Number(cur.count) || 0), 0))
+      });
+      const validLines = ['1','2','3','4','5','6','7','8','9'];
+      const lines = [...new Set(weeklyData.map(d => String(d.line_num)).filter(ln => validLines.includes(ln)))].sort();
+      lines.forEach(ln => {
+        datasets.push({
+          type: 'line', label: `${ln}호선`, borderColor: getLineColor(ln), tension: 0.3, order: 1,
+          data: labels.map(dateLabel => weeklyData.filter(d => String(d.date) === dateLabel && String(d.line_num) === ln).reduce((acc, cur) => acc + (Number(cur.count) || 0), 0))
+        });
+      });
+    } else {
+      datasets.push({
+        type: 'bar', label: `${userLine.value}호선 전체`, backgroundColor: getLineColor(userLine.value) + '80', order: 2,
+        data: labels.map(dateLabel => weeklyData.filter(d => String(d.date) === dateLabel && String(d.line_num) === userLine.value).reduce((acc, cur) => acc + (Number(cur.count) || 0), 0))
+      });
+      datasets.push({
+        type: 'line', label: '본인 역 장애', borderColor: '#FF6384', borderWidth: 4, tension: 0.3, order: 1,
+        data: labels.map(dateLabel => {
+          const found = weeklyData.find(d => String(d.date) === dateLabel && String(d.station_id) === myStationId);
+          return found ? (Number(found.count) || 0) : 0;
+        })
+      });
+    }
+    weeklyChartInstance = new Chart(ctxWeekly, { data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, min: 0, ticks: { stepSize: 1, precision: 0 } } } } });
+  }
+};
+
+const getLineColor = (ln) => {
+  const colors = { '1': '#0052A4', '2': '#00A84D', '3': '#EF7C1C', '4': '#00A4E3', '5': '#996CAC', '6': '#CD7C2F', '7': '#747F00', '8': '#E6186C', '9': '#BB8336' };
+  return colors[ln] || '#333';
+};
+
 const linetitle = computed(() => dashboardData.value?.linetitle || '운영 현황');
 const linetotal = computed(() => dashboardData.value?.linetotal || 0);
 const stationtotal = computed(() => dashboardData.value?.stationtotal || 0);
@@ -165,120 +267,45 @@ const total_lockers = computed(() => dashboardData.value?.total_lockers || 0);
 const used_lockers = computed(() => dashboardData.value?.used_lockers || 0);
 const incident_count = computed(() => dashboardData.value?.incident_count || 0);
 
-const currentRate = computed(() => total_lockers.value ? Math.round((used_lockers.value / total_lockers.value) * 100) : 0);
+const windDirText = computed(() => {
+  const dirs = ['북', '북동', '동', '남동', '남', '남서', '서', '북서', '북'];
+  return dirs[Math.round(seoulWeather.value.wd / 45) % 8] + '풍';
+});
+const displayRain = computed(() => seoulWeather.value.rn <= 0 ? '0mm' : seoulWeather.value.rn + 'mm');
+const feelsLikeTemp = computed(() => {
+  const t = seoulWeather.value.ta, v = seoulWeather.value.ws;
+  return v < 0.5 ? t.toFixed(1) : (13.12 + (0.6215 * t) - (11.37 * Math.pow(v, 0.16)) + (0.3965 * t * Math.pow(v, 0.16))).toFixed(1);
+});
+const weatherStatus = computed(() => seoulWeather.value.rn > 0 ? '비/눈' : (seoulWeather.value.hm > 70 ? '흐림' : '맑음'));
+const weatherIcon = computed(() => seoulWeather.value.rn > 0 ? '☔' : (seoulWeather.value.hm > 70 ? '☁️' : '☀️'));
+const formatObsTime = (tm) => tm ? `${String(tm).substring(8, 10)}:${String(tm).substring(10, 12)}` : '--:--';
 
-const initCharts = () => {
-  Object.values(chartInstances).forEach(instance => instance.destroy());
-  
-  const ctxUsed = document.getElementById('usedStorageChart')?.getContext('2d');
-  if (ctxUsed) {
-    chartInstances.used = new Chart(ctxUsed, { 
-      type: 'doughnut', 
-      data: { 
-        labels: ['사용 중', '여유'],
-        datasets: [{ 
-          data: [used_lockers.value, Math.max(0, total_lockers.value - used_lockers.value)], 
-          backgroundColor: ['#36A2EB', '#f2f2f2'], 
-          borderWidth: 0 
-        }] 
-      }, 
-      options: { cutout: '70%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, datalabels: { display: false } } } 
-    });
-  }
-
-  const ctxHourly = document.getElementById('hourlyChart')?.getContext('2d');
-  if (ctxHourly) {
-    const chartData = dashboardData.value?.hourlyData || [currentRate.value-5, currentRate.value-2, currentRate.value, currentRate.value+3, currentRate.value+1, currentRate.value];
-    chartInstances.hourly = new Chart(ctxHourly, {
-      type: 'line',
-      plugins: [ChartDataLabels],
-      data: { 
-        labels: ['08시', '11시', '14시', '17시', '20시', '23시'], 
-        datasets: [{ 
-          data: chartData, 
-          borderColor: '#36A2EB', 
-          fill: true, 
-          backgroundColor: 'rgba(54, 162, 235, 0.1)', 
-          tension: 0.4,
-          pointRadius: 5
-        }] 
-      },
-      options: { 
-        responsive: true, maintainAspectRatio: false,
-        scales: { y: { beginAtZero: true, max: 100, ticks: { callback: (v) => v + '%' } } },
-        plugins: { legend: { display: false }, datalabels: { display: true, align: 'top', formatter: (v) => v + '%' } }
-      }
-    });
-  }
-
-  const ctxWeekly = document.getElementById('weeklyChart')?.getContext('2d');
-  const weeklyData = dashboardData.value?.weekly_issue;
-
-  if (ctxWeekly && weeklyData && weeklyData.length > 0) {
-    hasWeeklyData.value = weeklyData.some(d => d.count > 0);
-    chartInstances.weekly = new Chart(ctxWeekly, {
-      type: 'bar',
-      plugins: [ChartDataLabels],
-      data: {
-        labels: weeklyData.map(d => d.date), 
-        datasets: [{
-          data: weeklyData.map(d => d.count), 
-          backgroundColor: '#FF6384',
-          borderRadius: 6
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: { 
-          y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } },
-          x: { grid: { display: false } }
-        },
-        plugins: {
-          legend: { display: false },
-          datalabels: {
-            display: true, anchor: 'end', align: 'top', color: '#FF6384',
-            font: { weight: 'bold' }, formatter: (v) => v > 0 ? v + '건' : '0'
-          }
-        }
-      }
-    });
-  } else {
-    hasWeeklyData.value = false;
-  }
+const getLineImage = () => {
+  let fileName = (userAuth.value === "2" && userLine.value) ? `Line${userLine.value}.png` : "Lineall.png";
+  return new URL(`../assets/Line/${fileName}`, import.meta.url).href;
 };
 
-const fetchData = async () => {
-  try {
-    const loginData = sessionStorage.getItem("login");
-    let s_id = "";
-    if (loginData) {
-      const user = JSON.parse(loginData);
-      userAuth.value = String(user.auth);
-      s_id = user.station_id;
-      if (userAuth.value === "2" && s_id) userLine.value = String(s_id).charAt(0);
-    }
-    const res = await axios.get('http://localhost:9000/get_dashboard', { params: { auth: userAuth.value, station_id: s_id } });
-    dashboardData.value = res.data;
-    await nextTick();
-    setTimeout(initCharts, 100); 
-  } catch (err) { console.error(err); }
-};
+const goBackToList = () => emit('go-list');
+const goTrainInfo = () => window.open("https://smss.seoulmetro.co.kr/traininfo/traininfoUserView.do", '_blank');
+const goWeatherDetail = () => window.open("https://weather.naver.com/map/", '_blank');
+
 onMounted(fetchData);
 </script>
 
 <style scoped>
-/* 기존 스타일 그대로 유지 */
+/* 기존 스타일 유지 */
 .dashboard-container { padding: 30px; background: #f4f7fa; min-height: 100vh; font-family: 'Pretendard', sans-serif; }
 .dashboard-header { margin-bottom: 25px; padding-left: 10px; }
 .dashboard-header h1 { font-size: 28px; font-weight: 800; color: #1a2a3a; margin: 0; }
 .main-summary-bar { display: flex; align-items: center; background: #fff; padding: 25px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.06); gap: 5px; margin-bottom: 30px; }
 .summary-item { flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; }
-
-/* 클릭 위젯 효과 추가 */
+.v-divider { width: 1.5px; height: 130px; background: #eee; margin: 0 5px; }
+.middle-widgets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; }
+.card { background: #fff; padding: 25px; border-radius: 18px; height: 480px; box-shadow: 0 5px 15px rgba(0,0,0,0.04); display: flex; flex-direction: column; }
+.card h3 { font-size: 19px; font-weight: 700; margin-bottom: 20px; color: #333; border-left: 5px solid #36A2EB; padding-left: 12px; }
+.canvas-wrapper { height: 360px; width: 100%; position: relative; }
 .incident-widget, .weather-widget { cursor: pointer; transition: transform 0.2s; }
 .incident-widget:hover, .weather-widget:hover { transform: translateY(-3px); }
-
 .weather-content { display: flex; flex-direction: column; align-items: center; }
 .weather-top { display: flex; align-items: center; gap: 8px; }
 .weather-icon { font-size: 32px; }
@@ -296,18 +323,16 @@ onMounted(fetchData);
 .chart-bottom-text.big-text { font-size: 20px; font-weight: 800; color: #222; }
 .used-color { color: #36A2EB; font-size: 22px; }
 .total-slash { font-size: 16px; color: #888; font-weight: 500; }
-.issue-icon-big { width: 120px; height: auto; margin-bottom: 12px; }
-.error-count-big { font-size: 30px; font-weight: 900; color: #d32f2f; line-height: 1; padding-top: 4px; }
-.unit-big { font-size: 20px; font-weight: 700; color: #d32f2f; margin-left: 3px;}
+.issue-box-vertical.large { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; width: 100%; }
+.issue-icon-big { width: 120px; height: auto; margin-bottom: 5px; }
+.issue-text-group { display: flex; align-items: baseline; justify-content: center; width: 100%; }
+.error-count-big { font-size: 25px; font-weight: 900; color: #d32f2f; line-height: 1; }
+.unit-big { font-size: 20px; font-weight: 700; color: #d32f2f; margin-left: 4px; }
 .contact-list-big { list-style: none; padding: 0; font-size: 13.5px; line-height: 1.5; text-align: left; }
-.v-divider { width: 1.5px; height: 130px; background: #eee; margin: 0 5px; }
-.middle-widgets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; }
-.card { background: #fff; padding: 25px; border-radius: 18px; height: 480px; box-shadow: 0 5px 15px rgba(0,0,0,0.04); display: flex; flex-direction: column; }
-.card h3 { font-size: 19px; font-weight: 700; margin-bottom: 20px; color: #333; border-left: 5px solid #36A2EB; padding-left: 12px; }
-.canvas-wrapper { height: 360px; width: 100%; position: relative; }
 .image-display-container { display: flex; justify-content: center; align-items: center; cursor: pointer; flex: 1; position: relative; overflow: hidden; border-radius: 12px; border: 1px solid #eee; }
 .route-map-img-fixed { width: 100%; height: 100%; object-fit: cover; }
 .hover-info { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); color: #fff; display: flex; align-items: center; justify-content: center; opacity: 0; transition: 0.3s; font-weight: bold; }
 .image-display-container:hover .hover-info { opacity: 1; }
 .no-data-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(249, 249, 249, 0.9); display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 14px; border-radius: 12px; z-index: 5; }
+.weather-loading { color: #aaa; font-size: 14px; margin-top: 20px; }
 </style>
