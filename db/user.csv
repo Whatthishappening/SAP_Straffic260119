@@ -1,1 +1,12 @@
 user_id,user_pw,station_id,station_name,line_name,user_name,user_email,auth
+admin,1234,131,종각,1호선,admin,admin@academy.com,1
+appv,appv,938,중앙보훈병원,9호선,승인중,appv@appv.com,3
+disable,1111,336,압구정,3호선,비활성화,disable@disable.com,4
+NaNA,1234,203,을지로3가,2호선,NaNa,asd,3
+uee8351773,1324,234,신도림,2호선,배영환,uee8351773@naver.com,2
+520,02,330,을지로3가,3호선,0520,50q2,4
+asd,1234,933,석촌,9호선,배영환,qwe,4
+bae,qwe,817,가락시장,8호선,Bae,asd@csc,3
+young,123,129,종로5가,1호선,배영환,young@goo.go.kr,3
+Knight,1234,937,둔촌오륜,9호선,영환,125252@naver.co.kk,3
+user,qwer,931,삼전,9호선,운영자,user@user.com,2
