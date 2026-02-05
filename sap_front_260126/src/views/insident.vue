@@ -120,7 +120,16 @@
               <span v-if="issue.incident_station_name" class="badge station">{{ issue.incident_station_name }}</span>
             </div>
           </div>
-          <div class="issue-sub-row"># by {{ issue.user_name }} reported {{ issue.create_at }}</div>
+       <div class="issue-sub-row">
+  <span class="reporter-info"># by {{ issue.user_name }}</span>
+  <span class="date-info">
+    reported {{ formatDate(issue.create_at) }}
+    <template v-if="issue.complete_at">
+      <span class="complete-separator"> | </span>
+      <span class="completed-text">completed {{ formatDate(issue.complete_at) }}</span>
+    </template>
+  </span>
+</div>
         </div>
         <div class="comment-count" v-if="issue.comment_cnt > 0">
           <span class="comment-icon"><img src="@/assets/말풍선.png" alt="search" style="width: 20px; height: 20px; vertical-align: middle;"></span><span class="count-num">{{ issue.comment_cnt }}</span>
@@ -139,7 +148,19 @@ import axios from 'axios'
 import StationSimpleSelector from './StationSimpleSelector.vue';
 
 const emit = defineEmits(['go-create', 'change-view']) 
-
+// 날짜 형식을 '26.02.05 12:30' 형태로 변환
+const formatDate = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return new Intl.DateTimeFormat('ko-KR', {
+    year: '2-digit',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).format(date);
+};
 // --- 상태 관리 ---
 const activeBulkMenu = ref(null); 
 const statusMap = { '1': '대기', '2': '해결중', '3': '완료', '4': '삭제' };
@@ -206,50 +227,38 @@ const getStatusConfig = (status) => {
 }
 
 // 일괄 업데이트 함수
+// handleBulkUpdate 함수 수정
 const handleBulkUpdate = async (type, value) => {
   if (selectedIds.value.length === 0 || !value) return;
   
-  if (confirm(`${selectedIds.value.length}개를 일괄 변경하시겠습니까?`)) {
+  const confirmMsg = type === 'status' && value === '3' 
+    ? `${selectedIds.value.length}개를 '완료' 처리하시겠습니까? (완료 시간이 기록됩니다)` 
+    : `${selectedIds.value.length}개를 일괄 변경하시겠습니까?`;
+
+  if (confirm(confirmMsg)) {
     try {
-      await axios.post('http://localhost:9000/update_incident_statusBatch', {
+      // 보낼 데이터 객체 생성
+      const payload = {
         incident_id: selectedIds.value,
         updateType: type, 
         updateValue: value 
-      });
+      };
+
+      // ★ 상태 변경이면서 값이 '3'(완료)일 때 status 파라미터를 명시적으로 추가
+      if (type === 'status' && value === '3') {
+        payload.status = '3';
+      }
+
+      await axios.post('http://localhost:9000/update_incident_statusBatch', payload);
+      
       alert('성공적으로 변경되었습니다.'); 
       clearSelection();
       fetchIssues(true);
-    } catch (err) { alert('변경 중 오류가 발생했습니다.'); }
-  }
-}
-
-const onBulkStationSelected = async (data) => {
-  if (selectedIds.value.length === 0) return;
-
-  if (confirm("위치 정보를 일괄 업데이트하시겠습니까?")) {
-    try {
-      // 1. 호선 업데이트 (값이 없어도 ''로 보냄)
-      await axios.post('http://localhost:9000/update_incident_statusBatch', {
-        incident_id: selectedIds.value,
-        updateType: 'line',
-        updateValue: data.line_name || '' 
-      });
-
-      // 2. 역 이름 업데이트 (값이 없어도 ''로 보냄)
-      await axios.post('http://localhost:9000/update_incident_statusBatch', {
-        incident_id: selectedIds.value,
-        updateType: 'station',
-        updateValue: data.station_name || ''
-      });
-
-      alert('성공적으로 변경되었습니다.');
-      clearSelection();
-      fetchIssues(true);
-    } catch (err) {
-      alert('변경 중 오류가 발생했습니다.');
+    } catch (err) { 
+      alert('변경 중 오류가 발생했습니다.'); 
     }
   }
-};
+}
 
 const handleClickOutside = (e) => {
   if (!e.target.closest('.bulk-menu-item')) {
