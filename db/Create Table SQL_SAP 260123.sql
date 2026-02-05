@@ -53,35 +53,6 @@
 -- 	lactation 			VARCHAR(10)		not null,
 -- 	created_at 			TIMESTAMP 		DEFAULT CURRENT_TIMESTAMP
 -- );
-
--- drop table storage.local_amenities;
-
-select * from storage.local_amenities;
-
-select * from storage.locker_usage order by locker_usage.created_at desc
-
---update storage.user set auth = 1 where user_name = '배영환';
-
-
-
--- 유저 테이블 생성
--- CREATE TABLE storage.user(
--- 	user_id				VARCHAR(20)		primary key,
--- 	user_pw				VARCHAR(30)		not null,
--- 	station_id 			VARCHAR(10)		not null,
--- 	station_name 		VARCHAR(100)	not null,
--- 	line_name 			VARCHAR(10)		not null,
--- 	user_name			VARCHAR(10)		not null,
--- 	user_email			VARCHAR(50),
--- 	auth				VARCHAR(10)		not null
-	
--- );
-
--- drop table storage.user;
-
--- select * from storage.user;
--- select * from storage.incident_comment;
-
 -- 장애/발생 테이블 생성
 -- Create Table storage.incident(
 
@@ -101,9 +72,6 @@ select * from storage.locker_usage order by locker_usage.created_at desc
 	
 -- );
 
--- drop table storage.incident;
--- drop table storage.incident_comment;
-
 
 -- 댓글 테이블 생성
 -- Create Table storage.incident_comment(
@@ -118,6 +86,30 @@ select * from storage.locker_usage order by locker_usage.created_at desc
 -- 	FOREIGN KEY (incident_id) REFERENCES storage.incident(incident_id)
 	
 -- );
+
+
+-- 유저 테이블 생성
+-- CREATE TABLE storage.user(
+-- 	user_id				VARCHAR(20)		primary key,
+-- 	user_pw				VARCHAR(30)		not null,
+-- 	station_id 			VARCHAR(10)		not null,
+-- 	station_name 		VARCHAR(100)	not null,
+-- 	line_name 			VARCHAR(10)		not null,
+-- 	user_name			VARCHAR(10)		not null,
+-- 	user_email			VARCHAR(50),
+-- 	auth				VARCHAR(10)		not null
+	
+-- );
+
+
+
+select * from storage.local_amenities;
+select * from storage.incident;
+select * from storage.locker_usage order by locker_usage.created_at desc
+
+
+-- select * from storage.user;
+-- select * from storage.incident_comment;
 
 
 
