@@ -18,7 +18,7 @@
             <div class="user-details-row">
               <span class="u-name">{{ userData.name }} 관리자</span>
               <span class="u-sep"> | </span>
-              <span class="u-station">{{ userData.station_name }}역</span>
+              <span class="u-station">{{ userData.station_name.replace(/역$/, '') }}역</span>
               <span class="u-sep"> | </span>
               <button @click="logout" class="logout-small-btn">로그아웃</button>
               <span class="user-avatar" @click="handleViewChange('my')" style="cursor:pointer">
@@ -40,7 +40,7 @@
         <nav>
           <div class="nav-item" @click="handleViewChange('Home')" :class="{ active: currentView === 'Home' }">▶대시보드</div>
           <div class="nav-item" @click="handleViewChange('statusstation')" :class="{ active: currentView === 'statusstation' }">▶역별현황</div>
-          <div class="nav-item" @click="handleViewChange('analysis')" :class="{ active: currentView === 'analysis' }">▶통계 분석</div>
+          <div class="nav-item" @click="handleViewChange('DataAnalysis')" :class="{ active: currentView === 'DataAnalysis' }">▶통계 분석</div>
           <div class="nav-item" @click="handleViewChange('insident')" :class="{ active: currentView === 'insident' }">▶장애/이슈</div>
           <div v-if="Number(userData.auth) === 1" class="nav-item" @click="handleViewChange('management')" :class="{ active: currentView === 'management' }">
             ▶사용자 관리
@@ -121,8 +121,9 @@ import my from './views/my.vue';
 import insident from './views/insident.vue';
 import Createinsident from './views/Createinsident.vue';
 import IssueDetail from './views/IssueDetail.vue';
+import DataAnalysis from './views/DataAnalysis.vue';
 
-const views = { Home, statusstation, management, Login, Regi, myedit, my, insident, Createinsident, IssueDetail };
+const views = { Home, statusstation, management, Login, Regi, myedit, my, insident, Createinsident, IssueDetail, DataAnalysis};
 const currentView = ref('Login');
 const isLoggedIn = ref(false);
 const selectedIncidentId = ref(null);
@@ -326,6 +327,7 @@ body {
   border-right: 1px solid #ddd;
   padding: 20px;
   flex-shrink: 0;
+  font-size: 2.5ch;
 }
 
 .nav-item { padding: 12px; margin-bottom: 5px; cursor: pointer; border-radius: 8px; color: #555; transition: 0.2s; }

@@ -68,6 +68,13 @@ export default {
       selectedSubway: { line_name: '', station_id: '', station_name: '' }
     };
   },
+  watch: {
+    current_pw(newVal) {
+      if (newVal.trim() === "") {
+        this.user_pw = "";
+      }
+    }
+  },
   mounted() {
     const sessionData = sessionStorage.getItem("user_info") || sessionStorage.getItem("login");
     const login = JSON.parse(sessionData);
@@ -84,6 +91,12 @@ export default {
     this.selectedSubway.line_name = ''; 
     this.selectedSubway.station_name = '';
     this.selectedSubway.station_id = '';
+
+    // ★ 기존 담당 정보를 미리 넣어둠 (비밀번호만 바꿀 때 유용)
+    this.selectedSubway.line_name = login.line_name || ''; 
+    this.selectedSubway.station_name = login.station_name || '';
+    this.selectedSubway.station_id = login.station_id || '';
+ 
   },
  
 

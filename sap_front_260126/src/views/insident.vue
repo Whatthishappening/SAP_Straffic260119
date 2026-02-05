@@ -126,7 +126,7 @@
     reported {{ formatDate(issue.create_at) }}
     <template v-if="issue.complete_at">
       <span class="complete-separator"> | </span>
-      <span class="completed-text">completed {{ formatDate(issue.complete_at) }}</span>
+      <span class="completed-text">✅ completed {{ formatDate(issue.complete_at) }}</span>
     </template>
   </span>
 </div>
@@ -188,6 +188,35 @@ const indicatorStyle = computed(() => {
   const isOpen = activeStatus.value === 'open'
   return { left: isOpen ? '0px' : '82px', width: isOpen ? '68px' : '72px', backgroundColor: isOpen ? '#2ecc71' : '#e74c3c' }
 })
+
+const onBulkStationSelected = async (stationData) => {
+  // stationData 예시: { station_name: '강남', line_name: '2호선' }
+  if (!stationData || selectedIds.value.length === 0) return;
+
+  const confirmMsg = `${selectedIds.value.length}개의 이슈 위치를 [${stationData.line_name} ${stationData.station_name}]으로 일괄 변경하시겠습니까?`;
+
+  if (confirm(confirmMsg)) {
+    try {
+      const payload = {
+        incident_id: selectedIds.value,
+        updateType: 'location',
+        updateValue: stationData.station_name, // 역 이름
+        lineName: stationData.line_name,       // 서버 Mybatis에서 사용할 호선 정보
+        station_id: stationData.station_id
+      
+      };
+
+      await axios.post('http://localhost:9000/update_incident_statusBatch', payload);
+      
+      alert('위치 정보가 성공적으로 변경되었습니다.');
+      clearSelection();
+      fetchIssues(true);
+    } catch (err) {
+      console.error(err);
+      alert('위치 변경 중 오류가 발생했습니다.');
+    }
+  }
+};
 const stationsInFilterLine = computed(() => {
   let list = !filterLine.value 
     ? allStations.value 

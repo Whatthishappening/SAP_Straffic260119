@@ -95,6 +95,7 @@
         <textarea v-model="newComment" placeholder="댓글을 입력하세요..." class="comment-textarea"></textarea>
         
         <div class="button-group">
+          <button class="list-back-btn outline" @click="goToList">목록으로</button>
           <div class="status-change-wrapper">
             <div v-if="activeMenu === 'status'" class="dropdown-menu status-dropdown">
               <div v-for="(label, value) in statusMap" 
@@ -160,6 +161,7 @@
 </template>
 
 <script setup>
+const emit = defineEmits(['go-list', 'change-view']);
 import { ref, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import StationSimpleSelector from './StationSimpleSelector.vue';
@@ -191,7 +193,9 @@ const issueData = ref({
 });
 
 const statusMap = { '1': '대기', '2': '해결중', '3': '완료', '4': '비활성화' };
-
+const goToList = () => {
+  emit('go-list');
+};
 const loadComments = () => {
   if (!props.data) return;
   axios.post("http://localhost:9000/get_comments", { incident_id: props.data })
@@ -362,7 +366,9 @@ const getStatusConfig = (status) => {
 .comment-body { padding: 20px; white-space: pre-wrap; font-size: 15px; line-height: 1.6; }
 .comment-text-content { word-break: break-all; }
 .edit-comment-textarea { width: 100%; min-height: 80px; padding: 10px; border: 2px solid #2188ff; border-radius: 4px; resize: vertical; font-size: 15px; }
-
+.list-back-btn{
+   background-color: #fff; border: 1px solid #d1d5da; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; 
+}
 /* 댓글 입력 */
 .comment-input-section { margin-top: 30px; }
 .comment-textarea { width: 100%; height: 120px; padding: 15px; border: 1px solid #d1d5da; border-radius: 6px; background-color: #f6f8fa; resize: none; box-sizing: border-box; font-size: 14px; }

@@ -19,7 +19,7 @@
     <aside class="side" ref="searchContainer">
       <section class="side-section">
         <div class="side-header">
-          <h4>심각도</h4>
+          <h4>심각도 <span class="required">*</span></h4>
           <span class="gear-btn" @click="toggleMenu('severity')">⚙️</span>
         </div>
         
@@ -46,7 +46,7 @@
 
       <section class="side-section">
         <div class="side-header">
-          <h4>분류 및 위치</h4>
+          <h4>분류 및 위치 <span class="required">*</span></h4>
           <span class="gear-btn" @click="toggleMenu('location')">⚙️</span>
         </div>
         
