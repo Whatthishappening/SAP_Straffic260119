@@ -218,11 +218,22 @@ const onBulkStationSelected = async (stationData) => {
   }
 };
 const stationsInFilterLine = computed(() => {
-  let list = !filterLine.value 
+let list = !filterLine.value 
     ? allStations.value 
     : allStations.value.filter(st => st.line_name === filterLine.value);
-    // 한글 가나다순 정렬
-  return [...list].sort((a, b) => a.station_name.localeCompare(b.station_name, 'ko'));
+
+  // 2. 중복 제거 로직 추가 (역 이름 기준)
+  const seen = new Set();
+  const uniqueList = list.filter(st => {
+    if (seen.has(st.station_name)) {
+      return false; // 이미 있는 이름이면 제외
+    }
+    seen.add(st.station_name);
+    return true;
+  });
+
+  // 3. 한글 가나다순 정렬
+  return [...uniqueList].sort((a, b) => a.station_name.localeCompare(b.station_name, 'ko'));
 });
 // --- Logic ---
 const toggleBulkMenu = (type) => {
@@ -332,8 +343,11 @@ const fetchIssues = async (isNewSearch = false) => {
 
 const handleScroll = () => {
   const { scrollHeight, scrollTop, clientHeight } = document.documentElement;
-  if (scrollTop + clientHeight >= scrollHeight - 50 && !isLoading.value && hasMore.value) {
-    pageNumber.value++; fetchIssues();
+ if (Math.ceil(scrollTop + clientHeight) >= scrollHeight - 100) {
+    if (!isLoading.value && hasMore.value) {
+      pageNumber.value++; 
+      fetchIssues();
+    }
   }
 }
 
@@ -394,7 +408,7 @@ onUnmounted(() => {
 .issue-item { display: flex; align-items: center; padding: 14px 20px; background-color: #fff; border: 1px solid #d1d5da; border-top: none; cursor: pointer; }
 .issue-item:hover { background-color: #f6f8fa; }
 .issue-item.is-selected { background-color: #fffdef; }
-.item-checkbox { margin-right: 15px; display: flex; transform: scale(1.3); align-items: center; }
+.item-checkbox { margin-right: 15px; display: flex; transform: scale(1.2); align-items: center; }
 .issue-main { flex: 1; min-width: 0; }
 .issue-title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: nowrap; overflow: hidden; }
 .title-text { font-size: 16px; font-weight: 600; color: #24292e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 50%; }

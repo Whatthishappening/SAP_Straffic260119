@@ -68,30 +68,30 @@
             <tbody>
               <tr>
                 <td class="f-name">배영환</td>
-                <td class="f-sep">|</td>
+                <td class="f-sep"> | </td>
                 <td class="f-role">Project Manager</td>
-                <td class="f-sep">|</td>
+                <td class="f-sep"> | </td>
                 <td class="f-email">uee8351773@naver.com</td>
               </tr>
               <tr>
                 <td class="f-name">김소연</td>
-                <td class="f-sep">|</td>
+                <td class="f-sep"> | </td>
                 <td class="f-role">Consultant</td>
-                <td class="f-sep">|</td>
+                <td class="f-sep"> | </td>
                 <td class="f-email">www.linkedin.com/in/souyeon-kim-735996394</td>
               </tr>
               <tr>
                 <td class="f-name">송원호</td>
-                <td class="f-sep">|</td>
+                <td class="f-sep"> | </td>
                 <td class="f-role">Developer</td>
-                <td class="f-sep">|</td>
+                <td class="f-sep"> | </td>
                 <td class="f-email">dnjsghman@naver.com</td>
               </tr>
               <tr>
                 <td class="f-name">오창석</td>
-                <td class="f-sep">|</td>
+                <td class="f-sep"> | </td>
                 <td class="f-role">Developer</td>
-                <td class="f-sep">|</td>
+                <td class="f-sep"> | </td>
                 <td class="f-email">dhckdtjr11@naver.com</td>
               </tr>
             </tbody>

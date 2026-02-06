@@ -63,13 +63,27 @@
   </div>
 </li>
           <li class="route-container">
-            <div class="route-header">
-              <span class="bullet">●</span>
-              <span class="label">담당 노선 정보</span>
-            </div>
-            <div class="section-title">역 선택 (현재: {{ selectedSubway.station_name || '미선택' }})</div>
-            <SubwaySelector @update-selection="handleSubwayChange" />
-          </li>
+  <div class="route-header">
+    <span class="bullet">●</span>
+    <span class="label">담당 노선 정보</span>
+  </div>
+  
+  <div class="route-selector-card">
+    <div class="current-selection-info">
+      <span class="info-label">현재 설정된 구역 :</span>
+      <div v-if="selectedSubway.line_name" class="selection-badge">
+        <span class="badge-line">{{ selectedSubway.line_name }}</span>
+        <span class="badge-station">{{ selectedSubway.station_name }}</span>
+      </div>
+      <span v-else class="no-selection">노선과 역을 선택해주세요.</span>
+    </div>
+    
+    <div class="selector-wrapper">
+      <SubwaySelector @update-selection="handleSubwayChange" />
+    </div>
+    <p class="selector-tip">* 수정 시 아래 셀렉트 박스에서 새로운 호선과 역을 선택하세요.</p>
+  </div>
+</li>
         </ul>
       </div>
     </div>
@@ -319,8 +333,73 @@ export default {
   flex-direction: column; 
   align-items: flex-start !important; 
   margin-top: 35px; 
-  border-top: 1px solid #f5f5f5; 
-  padding-top: 20px;
+  border-top: 1px solid #eee; 
+  padding-top: 25px;
+}
+.route-selector-card {
+  width: 100%;
+  max-width: 550px;
+  background-color: #fcfcfc;
+  border: 1px solid #e1e1e1;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 10px;
+  margin-left: 20px; /* 라벨과 정렬 맞춤 */
+}
+/* 현재 선택 정보 바 */
+.current-selection-info {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px dashed #ddd;
+}
+.info-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  margin-right: 12px;
+}
+/* 선택된 역 뱃지 스타일 */
+.selection-badge {
+  display: inline-flex;
+  align-items: center;
+  background-color: #3f417e;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.badge-line {
+  background-color: #2c2e5a;
+  color: #fff;
+  padding: 4px 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.badge-station {
+  background-color: #fff;
+  color: #3f417e;
+  padding: 4px 12px;
+  font-size: 14px;
+  font-weight: 700;
+  border: 1px solid #3f417e;
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+}
+.no-selection {
+  font-size: 14px;
+  color: #999;
+  font-style: italic;
+}
+/* 셀렉터 영역 */
+.selector-wrapper {
+  margin-bottom: 10px;
+}
+.selector-tip {
+  font-size: 12px;
+  color: #3498db;
+  margin: 8px 0 0 2px;
+  font-weight: 500;
 }
 .bullet { font-size: 8px; margin-right: 12px; }
 .label { 
@@ -331,5 +410,10 @@ export default {
 .edit-input { padding: 5px 10px; border: 1px solid #ccc; border-radius: 4px; width: 250px; font-size: 15px; }
 .edit-input.readonly { background-color: #f5f5f5; border: 1px solid #eee; color: #888; cursor: not-allowed; }
 .route-container { flex-direction: column; align-items: flex-start !important; margin-top: 10px; }
-.route-header { display: flex; align-items: center; margin-bottom: 10px; }
+/* 기존 스타일 유지 및 보정 */
+.route-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
 </style>

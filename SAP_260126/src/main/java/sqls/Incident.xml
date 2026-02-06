@@ -118,23 +118,27 @@
     UPDATE storage.incident
     <set>
         <if test="updateType == 'status'">
-            incident_status = #{updateValue},
-        </if>
-        
-        <if test="updateType == 'severity'">
-            incident_severity = #{updateValue},
-        </if>
-        
-        <if test="updateType == 'location'">
-            incident_line_name = #{lineName},
-            incident_station_name = #{updateValue},
-            <if test="station_id != null">
-                incident_station_id = #{station_id}::INTEGER,
-            </if>
+            incident_status = #{updateValue}
+            <choose>
+                <when test="updateValue == 3">
+                    , complete_at = NOW()
+                </when>
+                <otherwise>
+                    , complete_at = NULL
+                </otherwise>
+            </choose>
         </if>
 
-        <if test="(updateType == 'status' and updateValue.toString() == '3') or (status != null and status.toString() == '3')">
-            complete_at = NOW()
+        <if test="updateType == 'severity'">
+            incident_severity = #{updateValue}
+        </if>
+
+        <if test="updateType == 'location'">
+            incident_line_name = #{lineName},
+            incident_station_name = #{updateValue}
+            <if test="station_id != null">
+                , incident_station_id = #{station_id}::INTEGER
+            </if>
         </if>
     </set>
     WHERE incident_id IN
@@ -142,4 +146,6 @@
         #{id}::INTEGER
     </foreach>
 </update>
+
+
 </mapper>

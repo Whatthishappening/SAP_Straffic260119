@@ -23,7 +23,7 @@ public class IncidentController {
  @Autowired
  IncidentService service;
  
- @PostMapping("/get_incidentlist")
+ @PostMapping("get_incidentlist")
  public Map<String, Object> get_incidentlist(@RequestBody Incidentparam param) {
        
      System.out.println("검색 요청 데이터: " + param.toString());
