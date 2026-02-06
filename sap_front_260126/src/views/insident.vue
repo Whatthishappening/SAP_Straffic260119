@@ -168,7 +168,7 @@ const statusMap = { '1': '대기', '2': '해결중', '3': '완료', '4': '삭제
 const filterSeverity = ref('')
 const filterLine = ref('')
 const filterStation = ref('')
-const filterSort = ref('desc')
+const filterSort = ref('')
 
 const activeStatus = ref('open')
 const searchType = ref('title') 

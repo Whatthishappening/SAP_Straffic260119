@@ -46,7 +46,7 @@
 
       <section class="side-section">
         <div class="side-header">
-          <h4>분류 및 위치 <span class="required">*</span></h4>
+          <h4>분류 및 위치 <span class="required"></span></h4>
           <span class="gear-btn" @click="toggleMenu('location')">⚙️</span>
         </div>
         
