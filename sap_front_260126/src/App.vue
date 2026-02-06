@@ -64,12 +64,6 @@
         <span class="copyright">
           <table>
             <tbody>
-<<<<<<< HEAD
-              <tr><td>배영환 | Project Manger | uee8351773@naver.com</td></tr>
-              <tr><td>김소연 | Consultant | www.linkedin.com/in/souyeon-kim-735996394</td></tr>
-              <tr><td>송원호 | Developer | dnjsghman@naver.com</td></tr>
-              <tr><td>오창석 | Developer | dhckdtjr11@naver.com</td></tr>
-=======
               <tr>
                 <td class="f-name">배영환</td>
                 <td class="f-sep"> | </td>
@@ -98,7 +92,6 @@
                 <td class="f-sep"> | </td>
                 <td class="f-email">dhckdtjr11@naver.com</td>
               </tr>
->>>>>>> 426ca58412f5243984cc2e1df70ba74291154109
             </tbody>
           </table>
         </span>
