@@ -221,8 +221,6 @@ onUnmounted(() => {
 });
 
 const update_issueDetail = () => {
-  // 서버에 보내기 전 데이터 확인 (디버깅용)
-  console.log("저장될 데이터:", issueData.value);
   axios.post('http://localhost:9000/update_incident', issueData.value)
     .then(resp => {
       if (resp.data === "YES" || resp.data === 1) {
@@ -307,7 +305,6 @@ const selectStatus = (val) => {
 const selectSeverity = (lv) => { issueData.value.incident_severity = lv; activeMenu.value = null; update_issueDetail(); };
 
 const onStationSelected = (data) => {
- console.log("자식으로부터 받은 데이터:", data); // 디버깅용
 
   // 1. 자식이 보낸 데이터가 빈 값이어도 그대로 덮어씁니다.
   // (data.line_name이 '' 이면 issueData의 노선도 '' 이 됩니다)

@@ -97,7 +97,6 @@ const formData = reactive({
 
 // 노선/역 선택 시 실행되는 함수
 const onStationSelected = (data) => {
-  console.log("선택된 데이터 확인:", data);
   formData.incident_line_name = data.line_name || '';
   formData.incident_station_name = data.station_name || '';
   formData.incident_station_id = data.station_id || '';
