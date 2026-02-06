@@ -114,25 +114,32 @@
         WHERE incident_id = #{incident_id}::INTEGER
     </update>
 	
-	<update id="update_incident_statusBatch" parameterType="map">
+<update id="update_incident_statusBatch" parameterType="map">
     UPDATE storage.incident
     <set>
         <if test="updateType == 'status'">
             incident_status = #{updateValue},
         </if>
+        
         <if test="updateType == 'severity'">
             incident_severity = #{updateValue},
         </if>
-        <if test="updateType == 'line'">
-            incident_line_name = #{updateValue},
-        </if>
-        <if test="updateType == 'station'">
+        
+        <if test="updateType == 'location'">
+            incident_line_name = #{lineName},
             incident_station_name = #{updateValue},
+            <if test="station_id != null">
+                incident_station_id = #{station_id}::INTEGER,
+            </if>
+        </if>
+
+        <if test="(updateType == 'status' and updateValue.toString() == '3') or (status != null and status.toString() == '3')">
+            complete_at = NOW()
         </if>
     </set>
     WHERE incident_id IN
     <foreach collection="incident_id" item="id" open="(" separator="," close=")">
-        #{id}
+        #{id}::INTEGER
     </foreach>
 </update>
 </mapper>

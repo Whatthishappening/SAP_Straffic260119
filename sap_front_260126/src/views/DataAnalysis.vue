@@ -1,24 +1,19 @@
 <template>
   <div class="analysis-container">
-    <div class="analysis-card">
-      <div class="analysis-header">
-        <div class="header-left">
-          <h2>지하철 운영현황 통계분석</h2>
-          <span class="guide-text">※ 이미지를 클릭하면 실시간 Power BI 대시보드로 이동합니다.</span>
-        </div>
+    <div class="analysis-wrapper">
+      <div class="dashboard-minimal-info">
+        <span class="live-tag">● LIVE MONITORING</span>
+        <span class="report-name">지하철 장애 이슈 분석 리포트</span>
       </div>
-      
-      <div class="image-wrapper">
-        <a :href="powerBIUrl" target="_blank" rel="noopener noreferrer" class="analysis-link">
-          <img src="@/assets/통계분석.png" alt="통계분석 대시보드" class="analysis-img" />
-          <div class="hover-overlay">
-            <div class="overlay-content">
-              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                <polyline points="15 3 21 3 21 9"></polyline>
-                <line x1="10" y1="14" x2="21" y2="3"></line>
-              </svg>
-              <span>Power BI 리포트 열기</span>
+
+      <div class="report-area">
+        <a :href="powerBIUrl" target="_blank" rel="noopener noreferrer" class="report-link">
+          <img src="@/assets/통계분석.png" alt="통계분석 대시보드" class="report-img" />
+          
+          <div class="execution-overlay">
+            <div class="play-btn-wrapper">
+              <div class="play-icon"></div>
+              <span>리포트 분석 도구 실행</span>
             </div>
           </div>
         </a>
@@ -28,109 +23,121 @@
 </template>
 
 <script setup>
-/**
- * Power BI 게시 후 생성된 '웹에 게시' 또는 '보고서 링크' URL을 아래에 입력하세요.
- */
 const powerBIUrl = "https://app.powerbi.com/view?r=YOUR_REPORT_LINK_HERE";
 </script>
 
 <style scoped>
 .analysis-container {
-  padding: 30px;
-  background-color: #f8f9fa;
-  min-height: calc(100vh - 60px);
-}
-
-.analysis-card {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.analysis-header {
-  padding: 25px 35px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.header-left h2 {
-  margin: 0;
-  font-size: 22px;
-  color: #1a1a1a;
-  letter-spacing: -0.5px;
-}
-
-.guide-text {
-  font-size: 14px;
-  color: #888;
-  margin-top: 5px;
-  display: block;
-}
-
-.image-wrapper {
-  padding: 30px;
+  padding: 20px;
+  background-color: transparent; /* 배경 동화 */
   display: flex;
   justify-content: center;
-  background-color: #ffffff;
 }
 
-.analysis-link {
+.analysis-wrapper {
+  width: 100%;
+  max-width: 1300px;
+  /* 테두리, 그림자 삭제 */
+  background: transparent;
+}
+
+.dashboard-minimal-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 15px;
+  padding-left: 5px;
+}
+
+.live-tag {
+  color: #2ea44f;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.report-name {
+  color: #666;
+  font-size: 14px;
+}
+
+/* 리포트 이미지 영역 - 테두리 없이 깔끔하게 */
+.report-area {
   position: relative;
-  display: inline-block;
-  cursor: pointer;
-  border-radius: 8px;
   overflow: hidden;
-  border: 1px solid #eaeaea;
-  transition: all 0.3s ease;
+  border-radius: 8px; /* 이미지만 살짝 둥글게 */
 }
 
-.analysis-img {
+.report-link {
   display: block;
-  max-width: 100%;
-  height: auto;
-  transition: transform 0.5s ease;
+  position: relative;
 }
 
-.hover-overlay {
+.report-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  transition: transform 0.4s ease;
+}
+
+/* 마우스 올렸을 때 효과 */
+.execution-overlay {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(255, 255, 255, 0.1); /* 너무 어둡지 않게 */
   display: flex;
   justify-content: center;
   align-items: center;
   opacity: 0;
   transition: opacity 0.3s ease;
+  backdrop-filter: blur(2px);
 }
 
-.overlay-content {
+.play-icon {
+  width: 70px;
+  height: 70px;
+  background: #f2c811;
+  border-radius: 50%;
+  position: relative;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+
+.play-icon::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 55%;
+  transform: translate(-50%, -50%);
+  border-left: 20px solid #000;
+  border-top: 12px solid transparent;
+  border-bottom: 12px solid transparent;
+}
+
+.play-btn-wrapper {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 15px;
-  color: #fff;
+  color: #000; /* 텍스트 검정색으로 변경해서 더 깔끔하게 */
 }
 
-.overlay-content span {
+.play-btn-wrapper span {
   font-size: 18px;
-  font-weight: 600;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  font-weight: 800;
+  background: white;
+  padding: 5px 15px;
+  border-radius: 20px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
-.analysis-link:hover .hover-overlay {
+.report-link:hover .execution-overlay {
   opacity: 1;
 }
 
-.analysis-link:hover .analysis-img {
-  transform: scale(1.03);
-}
-
-.analysis-link:hover {
-  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-  border-color: #f2c811;
+.report-link:hover .report-img {
+  transform: scale(1.01); /* 아주 살짝 확대되는 느낌만 */
 }
 </style>

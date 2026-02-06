@@ -53,35 +53,6 @@
 -- 	lactation 			VARCHAR(10)		not null,
 -- 	created_at 			TIMESTAMP 		DEFAULT CURRENT_TIMESTAMP
 -- );
-
--- drop table storage.local_amenities;
-
-select * from storage.local_amenities;
-
-select * from storage.locker_usage order by locker_usage.created_at desc
-
---update storage.user set auth = 1 where user_name = '배영환';
-
-
-
--- 유저 테이블 생성
--- CREATE TABLE storage.user(
--- 	user_id				VARCHAR(20)		primary key,
--- 	user_pw				VARCHAR(30)		not null,
--- 	station_id 			VARCHAR(10)		not null,
--- 	station_name 		VARCHAR(100)	not null,
--- 	line_name 			VARCHAR(10)		not null,
--- 	user_name			VARCHAR(10)		not null,
--- 	user_email			VARCHAR(50),
--- 	auth				VARCHAR(10)		not null
-	
--- );
-
--- drop table storage.user;
-
--- select * from storage.user;
--- select * from storage.incident_comment;
-
 -- 장애/발생 테이블 생성
 -- Create Table storage.incident(
 
@@ -101,9 +72,6 @@ select * from storage.locker_usage order by locker_usage.created_at desc
 	
 -- );
 
--- drop table storage.incident;
--- drop table storage.incident_comment;
-
 
 -- 댓글 테이블 생성
 -- Create Table storage.incident_comment(
@@ -118,6 +86,46 @@ select * from storage.locker_usage order by locker_usage.created_at desc
 -- 	FOREIGN KEY (incident_id) REFERENCES storage.incident(incident_id)
 	
 -- );
+
+
+-- 유저 테이블 생성
+-- CREATE TABLE storage.user(
+-- 	user_id				VARCHAR(20)		primary key,
+-- 	user_pw				VARCHAR(30)		not null,
+-- 	station_id 			VARCHAR(10)		not null,
+-- 	station_name 		VARCHAR(100)	not null,
+-- 	line_name 			VARCHAR(10)		not null,
+-- 	user_name			VARCHAR(10)		not null,
+-- 	user_email			VARCHAR(50),
+-- 	auth				VARCHAR(10)		not null
+	
+-- );
+
+--날씨 테이블 생성
+CREATE TABLE storage.weather (
+    tm          VARCHAR(14)    NOT NULL, -- 관측시각 (YYYYMMDDHH00)
+    wd          NUMERIC,                 -- 풍향
+    ws          NUMERIC,                 -- 풍속
+    ta          NUMERIC,                 -- 기온
+    hm          NUMERIC,                 -- 습도
+    rn          NUMERIC,                 -- 강수량
+    reg_dt      TIMESTAMP      DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT weather_pkey PRIMARY KEY (tm)
+);
+
+select * from storage.weather;
+
+select * from storage.local_amenities;
+select * from storage.incident;
+select * from storage.locker_usage order by locker_usage.created_at desc
+
+insert into storage.weather
+(tm, wd, ws, ta, hm, rn)
+values('202602051800', 108.0, 25.0, 4.4, -9.0, -9.0)
+
+
+-- select * from storage.user;
+-- select * from storage.incident_comment;
 
 
 

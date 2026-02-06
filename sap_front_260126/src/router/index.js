@@ -10,6 +10,7 @@ import myedit from '../views/myedit.vue'
 import insident from '../views/insident.vue'
 import Createinsident from '../views/Createinsident.vue'
 import IssueDetail from '../views/IssueDetail.vue'
+import DataAnalysis from '../views/DataAnalysis.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -53,7 +54,12 @@ const router = createRouter({
       component: IssueDetail },
       { path: '/user/insident/issueDetail', 
       name: 'IssueDetail', 
-      component: IssueDetail } 
+      component: IssueDetail },
+    
+      { path: '/user/insident/DataAnalysis', 
+      name: 'DataAnalysis', 
+      component: DataAnalysis}
+      
   ]
 })
 
