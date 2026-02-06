@@ -102,16 +102,16 @@
 -- );
 
 --날씨 테이블 생성
-CREATE TABLE storage.weather (
-    tm          VARCHAR(14)    NOT NULL, -- 관측시각 (YYYYMMDDHH00)
-    wd          NUMERIC,                 -- 풍향
-    ws          NUMERIC,                 -- 풍속
-    ta          NUMERIC,                 -- 기온
-    hm          NUMERIC,                 -- 습도
-    rn          NUMERIC,                 -- 강수량
-    reg_dt      TIMESTAMP      DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT weather_pkey PRIMARY KEY (tm)
-);
+-- CREATE TABLE storage.weather (
+--     tm          VARCHAR(14)    NOT NULL, -- 관측시각 (YYYYMMDDHH00)
+--     wd          NUMERIC,                 -- 풍향
+--     ws          NUMERIC,                 -- 풍속
+--     ta          NUMERIC,                 -- 기온
+--     hm          NUMERIC,                 -- 습도
+--     rn          NUMERIC,                 -- 강수량
+--     reg_dt      TIMESTAMP      DEFAULT CURRENT_TIMESTAMP,
+--     CONSTRAINT weather_pkey PRIMARY KEY (tm)
+-- );
 
 select * from storage.weather;
 
@@ -123,7 +123,7 @@ insert into storage.weather
 (tm, wd, ws, ta, hm, rn)
 values('202602051800', 108.0, 25.0, 4.4, -9.0, -9.0)
 
-
+-- delete from storage.weather where tm = '202602061200';
 -- select * from storage.user;
 -- select * from storage.incident_comment;
 
