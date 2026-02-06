@@ -33,8 +33,6 @@ public class DashboardController {
 		System.out.println("요청 유저ID: " + user_id + ", 권한(auth): " + auth + ", 역 ID(station_id): " + station_id);
 		
 		// 2. 서비스 호출 
-		// (서비스 내부에서 syncSeoulWeather()가 호출되어 DB가 업데이트된 후, 
-		//  최종적으로 날씨 정보가 포함된 DashboardDto가 반환됩니다.)
 		DashboardDto result = service.getDashboard(auth, station_id, user_id);
 		
 		// 3. 응답 반환

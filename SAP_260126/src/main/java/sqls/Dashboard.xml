@@ -13,31 +13,15 @@
         <result property="hour_usedlocker" column="hour_usedlocker" />
         <result property="station_id" column="station_id"/>
         <result property="line_stationcount" column="line_stationcount"/>
-        <result property="weather_tm" column="weather_tm"/>
-        <result property="weather_ta" column="weather_ta"/>
-        <result property="weather_ws" column="weather_ws"/>
-        <result property="weather_hm" column="weather_hm"/>
-        <result property="weather_rn" column="weather_rn"/>
-        <result property="weather_wd" column="weather_wd"/>
-        </resultMap>
+        <result column="weather_tm" property="weather_tm"/>
+		<result column="weather_wd" property="weather_wd"/>
+		<result column="weather_ws" property="weather_ws"/>
+		<result column="weather_ta" property="weather_ta"/>
+		<result column="weather_hm" property="weather_hm"/>
+		<result column="weather_rn" property="weather_rn"/>
+   </resultMap>
 
-<insert id="insertWeather" parameterType="com.mbc.sap.dto.DashboardDto">
-        INSERT INTO storage.tb_weather (
-            tm, wd, ws, ta, hm, rn
-        ) VALUES (
-            #{weather_tm}, #{weather_wd}, #{weather_ws}, #{weather_ta}, #{weather_hm}, #{weather_rn}
-        )
-        ON CONFLICT (tm) 
-        DO UPDATE SET 
-            wd = EXCLUDED.wd,
-            ws = EXCLUDED.ws,
-            ta = EXCLUDED.ta,
-            hm = EXCLUDED.hm,
-            rn = EXCLUDED.rn,
-            reg_dt = CURRENT_TIMESTAMP
-    </insert>
-
-    <select id="getdashboard" resultMap="DashboardResultMap">
+ <select id="getdashboard" resultMap="DashboardResultMap">
         SELECT 
             /* 1. 제목 설정 */
             <choose>
@@ -120,32 +104,38 @@
                         AND l.station_id = (SELECT station_id FROM storage.user WHERE user_id = #{user_id})
                     </if>
                 </where>
-            ), 0) AS hour_usedlocker,
-
-            /* 7. 최신 서울 날씨 정보 추가 (tb_weather 테이블에서 1건 조회) */
-            w.tm AS weather_tm,
-            w.ta AS weather_ta,
-            w.ws AS weather_ws,
-            w.hm AS weather_hm,
-            w.rn AS weather_rn,
-            w.wd AS weather_wd
-        FROM (
-            SELECT * FROM storage.tb_weather 
-            ORDER BY tm DESC LIMIT 1
-        ) w
+            ), 0) AS hour_usedlocker
     </select>
-
+    
+    
+    <select id="getWeather" resultMap="DashboardResultMap">
+        SELECT 
+            tm AS weather_tm,
+            wd AS weather_wd,
+            ws AS weather_ws,
+            ta AS weather_ta,
+            hm AS weather_hm,
+            rn AS weather_rn
+        FROM storage.weather
+        ORDER BY tm DESC
+        LIMIT 1
+    </select>
+    
 <select id="getWeeklyIncidents" resultType="map">
     SELECT 
-        TO_CHAR(days.day, 'MM/DD') as "date",
-        SUBSTRING(i.incident_station_id, 1, 1) as "line_num",
-        i.incident_station_id as "station_id",  COUNT(i.incident_id) as "count"
-    FROM (
-        SELECT generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, '1 day')::date as day
-    ) days
-    LEFT JOIN storage.incident i ON DATE(i.create_at) = days.day
-    /* 역 ID까지 그룹화에 넣어줘야 개별 역 데이터가 유지됩니다 */
-    GROUP BY days.day, "line_num", i.incident_station_id 
-    ORDER BY days.day ASC, "line_num" ASC
+        TO_CHAR(create_at, 'YYYY-MM-DD') AS day,
+        SUBSTRING(incident_station_id, 1, 1) AS line_num, -- 호선 (막대용)
+        incident_station_id AS station_id,                -- 역 ID (선용)
+        COUNT(*) AS count
+    FROM storage.incident
+    WHERE create_at >= CURRENT_DATE - INTERVAL '7 days'
+    <if test='auth != null and auth.equals("2")'>
+        /* 수정 포인트: 본인 역만 가져오는게 아니라, 본인 호선(2호선 등)의 모든 장애를 가져옵니다. */
+        AND SUBSTRING(incident_station_id, 1, 1) = SUBSTRING(
+            (SELECT station_id FROM storage.user WHERE user_id = #{user_id}), 1, 1
+        )
+    </if>
+    GROUP BY TO_CHAR(create_at, 'YYYY-MM-DD'), line_num, incident_station_id
+    ORDER BY day ASC
 </select>
 </mapper>

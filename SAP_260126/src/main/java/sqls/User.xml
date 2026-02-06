@@ -92,36 +92,57 @@
     WHERE user_id = #{user_id}
 </update>
 
-
 <select id="get_olduserlist" parameterType="com.mbc.sap.dto.UserParam" resultMap="UserMap">
-        SELECT 
-            user_id, 
-            user_name, 
-            line_name, 
-            station_name, 
-            auth
-        FROM storage.user
-        WHERE auth != '3'
-        <if test="searchKeyword != null and searchKeyword != ''">
-            AND (user_id LIKE CONCAT('%', #{searchKeyword}, '%') 
-                 OR user_name LIKE CONCAT('%', #{searchKeyword}, '%'))
-        </if>
-        ORDER BY 
-        CASE WHEN auth = '1' THEN 0 ELSE 1 END ASC,
-        CASE WHEN auth = '4' THEN 1 ELSE 0 END ASC,  user_id DESC
-        LIMIT 5 OFFSET #{offset}
-        
-    </select>
+    SELECT 
+        user_id, 
+        user_name, 
+        line_name, 
+        station_name, 
+        auth
+    FROM storage.user
+    WHERE auth != '3'
+    
+    <if test="auth != null and auth != ''">
+        AND auth = #{auth}
+    </if>
+    
+    <if test="searchKeyword != null and searchKeyword != ''">
+        AND (user_id LIKE CONCAT('%', #{searchKeyword}, '%') 
+             OR user_name LIKE CONCAT('%', #{searchKeyword}, '%'))
+    </if>
+    
+    <if test="line_name != null and line_name != ''">
+        AND line_name = #{line_name}
+    </if>
+    
+    <if test="station_name != null and station_name != ''">
+        AND station_name = #{station_name}
+    </if>
 
-    <select id="count_olduser" parameterType="com.mbc.sap.dto.UserParam" resultType="int">
-        SELECT COUNT(*) 
-        FROM storage.user 
-        WHERE auth != '3'
-        <if test="searchKeyword != null and searchKeyword != ''">
-            AND (user_id LIKE CONCAT('%', #{searchKeyword}, '%') 
-                 OR user_name LIKE CONCAT('%', #{searchKeyword}, '%'))
-        </if>
-    </select>
+    ORDER BY 
+    CASE WHEN auth = '1' THEN 0 ELSE 1 END ASC, CASE WHEN auth = '4' THEN 1 ELSE 0 END ASC, user_name ASC LIMIT 5 OFFSET #{offset}
+</select>
+
+<select id="count_olduser" parameterType="com.mbc.sap.dto.UserParam" resultType="int">
+    SELECT COUNT(*) 
+    FROM storage.user 
+    WHERE auth != '3'
+    
+    <if test="auth != null and auth != ''">
+        AND auth = #{auth}
+    </if>
+    
+    <if test="searchKeyword != null and searchKeyword != ''">
+        AND (user_id LIKE CONCAT('%', #{searchKeyword}, '%') 
+             OR user_name LIKE CONCAT('%', #{searchKeyword}, '%'))
+    </if>
+    <if test="line_name != null and line_name != ''">
+        AND line_name = #{line_name}
+    </if>
+    <if test="station_name != null and station_name != ''">
+        AND station_name = #{station_name}
+    </if>
+</select>
 	
 	<update id="approveUsersBatch" parameterType="list">
     UPDATE storage.user

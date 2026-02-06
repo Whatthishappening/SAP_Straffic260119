@@ -62,16 +62,13 @@
           <div class="weather-bottom">
             <span>{{ windDirText }} {{ seoulWeather.ws }}m/s</span>
             <span class="dot">•</span>
-            <span>습도 {{ seoulWeather.hm }}%</span>
+            <span>습도 {{ seoulWeather.hm === -9.0 ? 0 : seoulWeather.hm }}%</span>
             <span class="dot">•</span>
-            <span>강수 {{ displayRain }}</span>
+            <span>강수 {{ (seoulWeather.rn <= 0 || seoulWeather.rn === -9.0) ? '0mm' : seoulWeather.rn + 'mm' }}</span>
           </div>
           <div class="weather-time">
-            서울기상관측소 | {{ formatObsTime(seoulWeather.tm) }} 관측
+            서울기상관측소 | {{ seoulWeather.tm.substring(8, 10) }}:{{ seoulWeather.tm.substring(10, 12) }} 관측
           </div>
-        </div>
-        <div v-else class="weather-loading">
-          데이터 업데이트 중...
         </div>
       </div>
 
@@ -120,28 +117,24 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue';
-import { useRouter } from 'vue-router'; 
 import axios from 'axios';
 import Chart from 'chart.js/auto';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 
-const router = useRouter(); 
+const emit = defineEmits(['go-list']);
 const dashboardData = ref(null);
 const userLine = ref(""); 
 const userAuth = ref("");
 const hasWeeklyData = ref(false); 
-const emit = defineEmits(['go-list']);
+const seoulWeather = ref({ tm: '', wd: 0, ws: 0, ta: 0, hm: 0, rn: 0 });
 
 let lockerChart = null;
 let hourlyChart = null;
 let weeklyChartInstance = null;
 
-const seoulWeather = ref({ tm: '', wd: 0, ws: 0, ta: 0, hm: 0, rn: 0 });
-
 const fetchData = async () => {
   try {
     const loginData = sessionStorage.getItem("login") || sessionStorage.getItem("user_info");
-    if (!loginData) return;
     const user = JSON.parse(loginData);
     userAuth.value = String(user.auth);
 
@@ -152,22 +145,22 @@ const fetchData = async () => {
     if (res.data) {
       dashboardData.value = res.data;
       seoulWeather.value = {
-        tm: res.data.weather_tm, ta: res.data.weather_ta, ws: res.data.weather_ws,
-        hm: res.data.weather_hm, rn: res.data.weather_rn, wd: res.data.weather_wd
+        tm: res.data.weather_tm || '', 
+        ta: res.data.weather_ta || 0, 
+        ws: res.data.weather_ws || 0,
+        hm: res.data.weather_hm || 0, 
+        rn: res.data.weather_rn || 0, 
+        wd: res.data.weather_wd || 0
       };
 
       if (userAuth.value === '2') {
-        // DB에서 받아온 최신 station_id 기준으로 호선 설정
-        const currentStationId = res.data.station_id || user.station_id;
-        userLine.value = String(currentStationId).charAt(0);
+        userLine.value = String(res.data.station_id || user.station_id).charAt(0);
       }
 
       await nextTick();
-      setTimeout(initCharts, 50);
+      initCharts();
     }
-  } catch (err) {
-    console.error("데이터 로딩 오류:", err);
-  }
+  } catch (err) { console.error("데이터 로딩 오류:", err); }
 };
 
 const initCharts = () => {
@@ -178,107 +171,86 @@ const initCharts = () => {
   const data = dashboardData.value;
   if (!data) return;
 
-  // --- [차트 1] 물품보관함 이용 현황 ---
+  // 1. 물품보관함 도넛 (정상화)
   const ctxUsed = document.getElementById('usedStorageChart')?.getContext('2d');
   if (ctxUsed) {
-    const total = Number(total_lockers.value || 0);
-    const used = Number(used_lockers.value || 0);
-    const available = Math.max(0, total - used);
+    const t = Number(data.total_lockers || 0);
+    const u = Number(data.used_lockers || 0);
     lockerChart = new Chart(ctxUsed, { 
       type: 'doughnut', 
-      data: { datasets: [{ data: [used, available], backgroundColor: ['#36A2EB', '#f2f2f2'], borderWidth: 0 }] },
-      options: { cutout: '70%', responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false }, datalabels: { display: false } } }
+      data: { datasets: [{ data: t === 0 ? [0, 1] : [u, t - u], backgroundColor: ['#36A2EB', '#f2f2f2'], borderWidth: 0 }] },
+      options: { cutout: '70%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: t !== 0 } } }
     });
   }
 
-  // --- [차트 2] 실시간 이용률 현황 ---
+  // 2. 실시간 이용률 (정수 표기 및 Styling)
   const ctxHourly = document.getElementById('hourlyChart')?.getContext('2d');
   if (ctxHourly) {
     const labels = ['08시', '11시', '14시', '17시', '20시', '23시'];
-    const datasets = [];
     const rawRate = Number(data.hour_usedlocker || 0);
     const fallback = [rawRate * 0.8, rawRate * 0.9, rawRate, rawRate * 1.1, rawRate * 1.05, rawRate];
+    const datasets = [];
+
     if (userAuth.value === '1') {
-      datasets.push({ label: '전체 이용률', data: data.total_hourly_rate || fallback, borderColor: '#36A2EB', backgroundColor: 'rgba(54, 162, 235, 0.2)', fill: true, tension: 0.4 });
+      datasets.push({ label: '전체 이용률', data: fallback, borderColor: '#36A2EB', backgroundColor: 'rgba(54, 162, 235, 0.2)', fill: true, tension: 0.4 });
     } else {
-      datasets.push({ label: `${userLine.value}호선 이용률`, data: data.line_hourly_rate || fallback, borderColor: getLineColor(userLine.value), fill: true, tension: 0.4 });
-      datasets.push({ label: '본인 역 이용률', data: data.station_hourly_rate || fallback.map(v => v * 0.9), borderColor: '#FF6384', borderWidth: 3, fill: false, tension: 0.4 });
+      datasets.push({ label: `${userLine.value}호선 이용률`, data: fallback, borderColor: getLineColor(userLine.value), backgroundColor: getLineColor(userLine.value) + '33', fill: true, tension: 0.4 });
+      datasets.push({ label: '본인 역 이용률', data: fallback.map(v => v * 0.9), borderColor: '#FF6384', borderWidth: 3, fill: false, tension: 0.4 });
     }
-    hourlyChart = new Chart(ctxHourly, { type: 'line', data: { labels, datasets }, plugins: [ChartDataLabels], options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, min: 0, max: 100 } }, plugins: { datalabels: { align: 'top', formatter: (v) => Math.round(v) + '%' } } } });
+    hourlyChart = new Chart(ctxHourly, { 
+      type: 'line', data: { labels, datasets }, plugins: [ChartDataLabels],
+      options: { 
+        responsive: true, maintainAspectRatio: false, 
+        scales: { y: { beginAtZero: true, max: 100 } },
+        plugins: { datalabels: { align: 'top', formatter: (v) => Math.round(v) + '%' } } 
+      } 
+    });
   }
 
-  // --- [차트 3] 장애발생 현황 (최신 역 정보 즉시 반영) ---
+  // 3. 장애발생 현황 (막대 노출 정규화)
   const ctxWeekly = document.getElementById('weeklyChart')?.getContext('2d');
   const weeklyData = data.weekly_issue || [];
-  
-  // 핵심: 세션이 아닌 DB 응답값(data.station_id)을 참조하여 변경사항 즉시 매칭
-  const myStationId = String(data.station_id || '');
-
   if (ctxWeekly) {
     hasWeeklyData.value = true;
     const labels = [];
     for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
+      const d = new Date(); d.setDate(d.getDate() - i);
       labels.push(`${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`);
     }
 
     const datasets = [];
     if (userAuth.value === '1') {
-      datasets.push({
-        type: 'bar', label: '전체 장애건수', backgroundColor: '#E0E0E0', order: 2,
-        data: labels.map(dateLabel => weeklyData.filter(d => String(d.date) === dateLabel).reduce((acc, cur) => acc + (Number(cur.count) || 0), 0))
-      });
-      const validLines = ['1','2','3','4','5','6','7','8','9'];
-      const lines = [...new Set(weeklyData.map(d => String(d.line_num)).filter(ln => validLines.includes(ln)))].sort();
-      lines.forEach(ln => {
-        datasets.push({
-          type: 'line', label: `${ln}호선`, borderColor: getLineColor(ln), tension: 0.3, order: 1,
-          data: labels.map(dateLabel => weeklyData.filter(d => String(d.date) === dateLabel && String(d.line_num) === ln).reduce((acc, cur) => acc + (Number(cur.count) || 0), 0))
-        });
+      datasets.push({ type: 'bar', label: '전체 장애건수', backgroundColor: '#E0E0E0', order: 2, data: labels.map(l => weeklyData.filter(d => d.day.includes(l.replace('/','-'))).reduce((a, c) => a + Number(c.count || 0), 0)) });
+      ['1','2','3','4','5','6','7','8','9'].forEach(ln => {
+        datasets.push({ type: 'line', label: `${ln}호선`, borderColor: getLineColor(ln), tension: 0.3, order: 1, data: labels.map(l => weeklyData.filter(d => d.day.includes(l.replace('/','-')) && String(d.line_num) === ln).reduce((a, c) => a + Number(c.count || 0), 0)) });
       });
     } else {
-      datasets.push({
-        type: 'bar', label: `${userLine.value}호선 전체`, backgroundColor: getLineColor(userLine.value) + '80', order: 2,
-        data: labels.map(dateLabel => weeklyData.filter(d => String(d.date) === dateLabel && String(d.line_num) === userLine.value).reduce((acc, cur) => acc + (Number(cur.count) || 0), 0))
-      });
-      datasets.push({
-        type: 'line', label: '본인 역 장애', borderColor: '#FF6384', borderWidth: 4, tension: 0.3, order: 1,
-        data: labels.map(dateLabel => {
-          const found = weeklyData.find(d => String(d.date) === dateLabel && String(d.station_id) === myStationId);
-          return found ? (Number(found.count) || 0) : 0;
-        })
-      });
+      datasets.push({ type: 'bar', label: `${userLine.value}호선 전체`, backgroundColor: getLineColor(userLine.value) + '80', order: 2, data: labels.map(l => weeklyData.filter(d => d.day.includes(l.replace('/','-')) && String(d.line_num) === userLine.value).reduce((a, c) => a + Number(c.count || 0), 0)) });
+      datasets.push({ type: 'line', label: '본인 역 장애', borderColor: '#FF6384', borderWidth: 4, tension: 0.3, order: 1, data: labels.map(l => {
+          const found = weeklyData.find(d => d.day.includes(l.replace('/','-')) && String(d.station_id) === String(data.station_id));
+          return found ? Number(found.count) : 0;
+      })});
     }
-    weeklyChartInstance = new Chart(ctxWeekly, { data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, min: 0, ticks: { stepSize: 1, precision: 0 } } } } });
+    weeklyChartInstance = new Chart(ctxWeekly, { data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } } });
   }
 };
 
-const getLineColor = (ln) => {
-  const colors = { '1': '#0052A4', '2': '#00A84D', '3': '#EF7C1C', '4': '#00A4E3', '5': '#996CAC', '6': '#CD7C2F', '7': '#747F00', '8': '#E6186C', '9': '#BB8336' };
-  return colors[ln] || '#333';
-};
-
+const getLineColor = (ln) => ({ '1': '#0052A4', '2': '#00A84D', '3': '#EF7C1C', '4': '#00A4E3', '5': '#996CAC', '6': '#CD7C2F', '7': '#747F00', '8': '#E6186C', '9': '#BB8336' }[ln] || '#333');
 const linetitle = computed(() => dashboardData.value?.linetitle || '운영 현황');
-const linetotal = computed(() => dashboardData.value?.linetotal || 0);
-const stationtotal = computed(() => dashboardData.value?.stationtotal || 0);
-const line_stationcount = computed(() => dashboardData.value?.line_stationcount || 0);
-const total_lockers = computed(() => dashboardData.value?.total_lockers || 0);
-const used_lockers = computed(() => dashboardData.value?.used_lockers || 0);
-const incident_count = computed(() => dashboardData.value?.incident_count || 0);
+const linetotal = computed(() => Number(dashboardData.value?.linetotal || 0));
+const stationtotal = computed(() => Number(dashboardData.value?.stationtotal || 0));
+const line_stationcount = computed(() => Number(dashboardData.value?.line_stationcount || 0));
+const total_lockers = computed(() => Number(dashboardData.value?.total_lockers || 0));
+const used_lockers = computed(() => Number(dashboardData.value?.used_lockers || 0));
+const incident_count = computed(() => Number(dashboardData.value?.incident_count || 0));
 
-const windDirText = computed(() => {
-  const dirs = ['북', '북동', '동', '남동', '남', '남서', '서', '북서', '북'];
-  return dirs[Math.round(seoulWeather.value.wd / 45) % 8] + '풍';
-});
-const displayRain = computed(() => seoulWeather.value.rn <= 0 ? '0mm' : seoulWeather.value.rn + 'mm');
+const windDirText = computed(() => ['북','북동','동','남동','남','남서','서','북서','북'][Math.round(seoulWeather.value.wd / 45) % 8] + '풍');
 const feelsLikeTemp = computed(() => {
   const t = seoulWeather.value.ta, v = seoulWeather.value.ws;
   return v < 0.5 ? t.toFixed(1) : (13.12 + (0.6215 * t) - (11.37 * Math.pow(v, 0.16)) + (0.3965 * t * Math.pow(v, 0.16))).toFixed(1);
 });
-const weatherStatus = computed(() => seoulWeather.value.rn > 0 ? '비/눈' : (seoulWeather.value.hm > 70 ? '흐림' : '맑음'));
-const weatherIcon = computed(() => seoulWeather.value.rn > 0 ? '☔' : (seoulWeather.value.hm > 70 ? '☁️' : '☀️'));
-const formatObsTime = (tm) => tm ? `${String(tm).substring(8, 10)}:${String(tm).substring(10, 12)}` : '--:--';
+const weatherStatus = computed(() => (seoulWeather.value.rn > 0 && seoulWeather.value.rn !== -9.0) ? '비/눈' : (seoulWeather.value.hm > 70 ? '흐림' : '맑음'));
+const weatherIcon = computed(() => (seoulWeather.value.rn > 0 && seoulWeather.value.rn !== -9.0) ? '☔' : (seoulWeather.value.hm > 70 ? '☁️' : '☀️'));
 
 const getLineImage = () => {
   let fileName = (userAuth.value === "2" && userLine.value) ? `Line${userLine.value}.png` : "Lineall.png";
@@ -293,7 +265,6 @@ onMounted(fetchData);
 </script>
 
 <style scoped>
-/* 기존 스타일 유지 */
 .dashboard-container { padding: 30px; background: #f4f7fa; min-height: 100vh; font-family: 'Pretendard', sans-serif; }
 .dashboard-header { margin-bottom: 25px; padding-left: 10px; }
 .dashboard-header h1 { font-size: 28px; font-weight: 800; color: #1a2a3a; margin: 0; }
@@ -325,7 +296,6 @@ onMounted(fetchData);
 .total-slash { font-size: 16px; color: #888; font-weight: 500; }
 .issue-box-vertical.large { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; width: 100%; }
 .issue-icon-big { width: 120px; height: auto; margin-bottom: 5px; }
-.issue-text-group { display: flex; align-items: baseline; justify-content: center; width: 100%; }
 .error-count-big { font-size: 25px; font-weight: 900; color: #d32f2f; line-height: 1; }
 .unit-big { font-size: 20px; font-weight: 700; color: #d32f2f; margin-left: 4px; }
 .contact-list-big { list-style: none; padding: 0; font-size: 13.5px; line-height: 1.5; text-align: left; }
@@ -334,5 +304,4 @@ onMounted(fetchData);
 .hover-info { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); color: #fff; display: flex; align-items: center; justify-content: center; opacity: 0; transition: 0.3s; font-weight: bold; }
 .image-display-container:hover .hover-info { opacity: 1; }
 .no-data-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(249, 249, 249, 0.9); display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 14px; border-radius: 12px; z-index: 5; }
-.weather-loading { color: #aaa; font-size: 14px; margin-top: 20px; }
 </style>

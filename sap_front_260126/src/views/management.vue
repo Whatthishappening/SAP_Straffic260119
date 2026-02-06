@@ -4,19 +4,12 @@
     <div id="newuser_list_container" class="mypage_wrapper mb_5">
       <div class="mypage_header">
         <h2 class="title">신규 사용자 승인 대기 목록</h2>
-        
         <div class="header_right_group">
           <div class="batch_control_area" v-if="selected_new_user_ids.length > 0">
             <span class="selected_info">선택됨 <b>{{ selected_new_user_ids.length }}</b>명</span>
             <div class="batch_btn_group">
-              <template v-if="selected_new_user_ids.length === 1">
-                <button class="batch_approve_btn" @click="batch_approve_users">승인</button>
-                <button class="batch_reject_btn" @click="batch_reject_users">거절</button>
-              </template>
-              <template v-else>
-                <button class="batch_approve_btn" @click="batch_approve_users">일괄 승인</button>
-                <button class="batch_reject_btn" @click="batch_reject_users">일괄 거절</button>
-              </template>
+              <button class="batch_approve_btn" @click="batch_approve_users">일괄 승인</button>
+              <button class="batch_reject_btn" @click="batch_reject_users">일괄 거절</button>
             </div>
           </div>
           <div class="user_count">대기 인원: {{ cnt_new }}명</div>
@@ -34,7 +27,6 @@
                 <th>이름</th>
                 <th>소속 호선</th>
                 <th>소속역</th>
-                <th>상태</th>
                 <th>관리</th>
               </tr>
             </thead>
@@ -44,9 +36,8 @@
                 <td class="value_bold">{{ index + 1 }}</td>
                 <td class="value_id">{{ user.user_id }}</td>
                 <td>{{ user.user_name }}</td>
-                <td><div class="display_box" :class="'line_' + user.line_name">{{ user.line_name }}</div></td>
+                <td><div class="display_box" :class="'line_' + (user.line_name ? user.line_name.replace(' ', '') : '')">{{ user.line_name }}</div></td>
                 <td><div class="display_box station_box">{{ user.station_name }}</div></td>
-                <td><span class="status_wait">승인대기</span></td>
                 <td>
                   <div class="btn_group">
                     <button class="approve_btn" @click="approve_user(user.user_id)">승인</button>
@@ -55,26 +46,48 @@
                 </td>
               </tr>
               <tr v-if="users_new.length === 0">
-                <td colspan="8" class="empty_msg">대기 중인 사용자가 없습니다.</td>
+                <td colspan="7" class="empty_msg">대기 중인 사용자가 없습니다.</td>
               </tr>
             </tbody>
           </table>
         </div>
-        <div class="pagination_container">
-          <b-pagination v-model="page_new" :total-rows="cnt_new" :per-page="5" @input="get_newuser_list" align="center"></b-pagination>
+        <div class="pagination_container" v-if="cnt_new > 5">
+           <b-pagination v-model="page_new" :total-rows="cnt_new" :per-page="5" @input="get_newuser_list" align="center"></b-pagination>
         </div>
       </div>
     </div>
 
     <div id="olduser_list_container" class="mypage_wrapper">
-      <div class="mypage_header">
-        <h2 class="title">기존 가입 계정</h2>
-        <div class="search_area">
-          <input type="text" v-model="search_keyword" placeholder="ID 또는 이름 검색" @keyup.enter="search_users" class="search_input">
-          <button class="search_btn" @click="search_users">검색</button>
-        </div>
-        <div class="user_count">가입 인원: {{ cnt_old }}명</div>
-      </div>
+     <div class="mypage_header">
+  <h2 class="title">기존 가입 계정</h2>
+  
+  <div class="search_area_center">
+    <input type="text" v-model="search_keyword" placeholder="ID 또는 이름 검색" @keyup.enter="search_users" class="search_input">
+    <button class="search_btn" @click="search_users">검색</button>
+  </div>
+
+  <div class="header_right_group">
+    <div class="filter_selectors">
+      <select v-model="filter_line" @change="on_line_change" class="filter_select">
+        <option value="">호선 전체</option>
+        <option v-for="line in line_options" :key="line" :value="line">{{ line }}</option>
+      </select>
+      <select v-model="filter_station" @change="search_users" class="filter_select">
+        <option value="">역 전체</option>
+        <option v-for="st in stations_in_filter_line" :key="st.station_id" :value="st.station_name">{{ st.station_name }}</option>
+      </select>
+      <select v-model="filter_auth" @change="search_users" class="filter_select auth_filter">
+        <option value="">권한 전체</option>
+        <option value="1">마스터</option>
+        <option value="2">운영자</option>
+        <option value="4">비활성화</option>
+      </select>
+      <button class="reset_btn" @click="reset_filter">리셋</button>
+    </div>
+    
+    <div class="user_count">가입 인원: {{ cnt_old }}명</div>
+  </div>
+</div>
 
       <div class="info_section">
         <div class="info_container">
@@ -87,7 +100,7 @@
                 <th>소속 호선</th>
                 <th>소속역</th>
                 <th>권한</th>
-                <th>수정/삭제</th>
+                <th>관리</th>
               </tr>
             </thead>
             <tbody>
@@ -95,14 +108,13 @@
                 <td class="value_bold">{{ index + 1 }}</td>
                 <td class="value_id">{{ user.user_id }}</td>
                 <td>{{ user.user_name }}</td>
-                <td><div class="display_box" :class="'line_' + user.line_name">{{ user.line_name }}</div></td>
+                <td><div class="display_box" :class="'line_' + (user.line_name ? user.line_name.replace(' ', '') : '')">{{ user.line_name }}</div></td>
                 <td><div class="display_box station_box">{{ user.station_name }}</div></td>
-                
                 <td>
-                  <span v-if="!user.is_edit" class="status_auth">
+                  <span v-if="!user.is_edit">
                     <b v-if="user.auth == 1" style="color: #e6265b;">마스터</b>
                     <b v-else-if="user.auth == 2" style="color: #3f417e;">운영자</b>
-                    <b v-else-if="user.auth == 4" style="color: #666;">비활성화</b>
+                     <b v-else-if="user.auth == 4" style="color: #3f417e;">비활성화</b>
                     <span v-else>일반({{ user.auth }})</span>
                   </span>
                   <select v-else v-model="user.auth" class="auth_select">
@@ -110,7 +122,6 @@
                     <option value="2">운영자</option>
                   </select>
                 </td>
-
                 <td>
                   <div class="btn_group">
                     <template v-if="!user.is_edit">
@@ -124,19 +135,12 @@
                   </div>
                 </td>
               </tr>
-              <tr v-if="users_old.length === 0">
-                <td colspan="7" class="empty_msg">데이터가 없습니다.</td>
-              </tr>
             </tbody>
           </table>
         </div>
-
-        <div class="more_container" v-if="cnt_old > 5 && users_old.length < cnt_old">
-          <button class="more_btn" @click="get_olduser_list" :disabled="is_loading">
-            {{ is_loading ? '로딩 중...' : '사용자 더보기 ↓' }}
-          </button>
+        <div class="more_container" v-if="cnt_old > 0 && users_old.length < cnt_old">
+          <button class="more_btn" @click="get_olduser_list" :disabled="is_loading">더보기 ↓</button>
         </div>
-        <div v-else-if="cnt_old > 0" class="end_msg">모든 사용자를 불러왔습니다.</div>
       </div>
     </div>
   </div>
@@ -149,171 +153,131 @@ export default {
   name: 'UserManagement',
   data() {
     return {
-      users_new: [], page_new: 1, cnt_new: 0,
-      users_old: [], page_old: 1, cnt_old: 0,
-      search_keyword: "", is_loading: false,
-      is_all_new_selected: false 
+      users_new: [], page_new: 1, cnt_new: 0, is_all_new_selected: false,
+      users_old: [], page_old: 0, cnt_old: 0,
+      search_keyword: "", is_loading: false, filter_auth: "",
+      filter_line: "", filter_station: "", all_stations: [],
+      line_options: ['1호선', '2호선', '3호선', '4호선', '5호선', '6호선', '7호선', '8호선', '9호선']
     }
   },
   computed: {
-
     selected_new_user_ids() {
       return this.users_new.filter(u => u.checked).map(u => u.user_id);
     },
-   
-    selected_user_ids() {
-      return this.users_old.filter(u => u.checked).map(u => u.user_id);
+    stations_in_filter_line() {
+      let list = !this.filter_line ? this.all_stations : this.all_stations.filter(st => st.line_name === this.filter_line);
+      const seen = new Set();
+      return list.filter(st => {
+        if (seen.has(st.station_name)) return false;
+        seen.add(st.station_name);
+        return true;
+      }).sort((a, b) => a.station_name.localeCompare(b.station_name, 'ko'));
     }
   },
   mounted() {
-    this.get_newuser_list();
-    this.get_olduser_list();
+    this.init_data();
   },
   methods: {
-    
-     /* 1. 신규 가입 대기자 목록 조회*/
+    async init_data() {
+      try {
+        const res = await axios.get('http://localhost:9000/get_allstations');
+        this.all_stations = res.data;
+      } catch(e) { console.error(e); }
+      this.get_newuser_list();
+      this.search_users();
+    },
     get_newuser_list() {
-
       axios.get("http://localhost:9000/get_newuserlist", { params: { pageNumber: this.page_new } })
         .then(resp => {
-          this.users_new = resp.data.newuserlist.map(user => ({
-            ...user,
-            checked: false 
-          }));
+          this.users_new = resp.data.newuserlist.map(user => ({ ...user, checked: false }));
           this.cnt_new = resp.data.cnt;
-          this.is_all_new_selected = false;
         });
-    },
- 
-    select_all_new_users() {
-      this.users_new.forEach(user => {
-        user.checked = this.is_all_new_selected;
-      });
-    },
-    
-    batch_approve_users() {
-      const selected_ids = this.selected_new_user_ids; 
-
-      if (selected_ids.length === 0) {
-        alert("선택된 사용자가 없습니다.");
-        return;
-      }
-
-      if (confirm(`선택한 ${selected_ids.length}명을 모두 승인하시겠습니까?`)) {
-        axios.post("http://localhost:9000/approve_users_batch", { 
-            userIds: selected_ids // 백엔드 DTO 필드명일 확률이 높아 유지
-          })
-          .then(resp => {
-            if (resp.data === "YES") {
-              alert("모두 승인되었습니다.");
-              this.get_newuser_list();
-              this.search_users();
-            }
-          })
-          .catch(err => console.error(err));
-      }
-    },
-    /*3. 여러 명 한꺼번에 거절 (일괄 거절) */
-    batch_reject_users() {
-      const selected_ids = this.selected_new_user_ids;
-
-      if (selected_ids.length === 0) {
-        alert("선택된 사용자가 없습니다.");
-        return;
-      }
-
-      if (confirm(`선택한 ${selected_ids.length}명의 요청을 거절하시겠습니까?`)) {
-        // 백엔드 @PostMapping("reject_usersBatch") 주소와 일치시킴
-        axios.post("http://localhost:9000/reject_usersBatch", { 
-            userIds: selected_ids 
-          })
-          .then(resp => {
-            if (resp.data === "YES") {
-              alert("선택한 요청이 모두 거절(삭제)되었습니다.");
-              this.get_newuser_list(); // 신규 목록 새로고침
-            } else {
-              alert("처리에 실패했습니다.");
-            }
-          })
-          .catch(err => {
-            console.error("일괄 거절 에러:", err);
-            alert("서버 통신 중 오류가 발생했습니다.");
-          });
-      }
     },
     search_users() {
       this.users_old = [];
-      this.page_old = 1;
+      this.page_old = 0;
       this.get_olduser_list();
     },
-    /*4. 기존 사용자 목록 조회 (더보기 방식) */
     get_olduser_list() {
       if (this.is_loading) return;
       this.is_loading = true;
       axios.get("http://localhost:9000/get_olduserlist", { 
-        params: { pageNumber: this.page_old, searchKeyword: this.search_keyword } 
-      })
-      .then(resp => {
-        const new_list = resp.data.olduserlist.map(user => ({
-          ...user,
-          is_edit: false,          // 변경: isEdit -> is_edit
-          original_auth: user.auth, // 변경: originalAuth -> original_auth
-          checked: false
-        }));
+        params: { 
+          pageNumber: this.page_old, 
+          searchKeyword: this.search_keyword,
+          sortOrder: this.sort_order,
+          line_name: this.filter_line,
+          station_name: this.filter_station,
+          auth: this.filter_auth,
+        } 
+      }).then(resp => {
+        const new_list = resp.data.olduserlist.map(user => ({ ...user, is_edit: false, original_auth: user.auth }));
         this.cnt_old = resp.data.cnt;
         if (new_list.length > 0) {
           const existing_ids = new Set(this.users_old.map(u => u.user_id));
-          const filtered_new_list = new_list.filter(u => !existing_ids.has(u.user_id));
-          this.users_old = [...this.users_old, ...filtered_new_list];
+          this.users_old = [...this.users_old, ...new_list.filter(u => !existing_ids.has(u.user_id))];
           this.page_old++;
         }
-      })
-      .finally(() => { this.is_loading = false; });
+      }).finally(() => { this.is_loading = false; });
     },
-    // 변경: toggleEdit -> toggle_edit
+    // 필터 리셋
+    reset_filter() {
+      this.filter_line = ""; this.filter_station = "";this.filter_auth = ""; this.search_keyword = "";
+      this.search_users();
+    },
+    on_line_change() {
+      this.filter_station = "";
+      this.search_users();
+    },
+    select_all_new_users() {
+      this.users_new.forEach(user => { user.checked = this.is_all_new_selected; });
+    },
+    // 관리 기능 생략 (기존과 동일하므로 로직만 유지)
     toggle_edit(user, mode) {
       if (!mode) user.auth = user.original_auth;
       user.is_edit = mode;
     },
-    /*5. 사용자 권한 수정 저장*/
-    update_auth(user) {
-      if(confirm(`${user.user_id}의 권한을 변경하시겠습니까?`)) {
+
+    
+
+
+    async update_auth(user) {
+      // 1. 권한을 낮추는 경우인지 확인 (기존 마스터(1)에서 다른 권한으로 변경 시)
+    if (user.original_auth == 1 && user.auth != 1) {
+      
+      // 2. 전체 사용자 리스트(users_old)에서 마스터가 몇 명인지 계산
+      const masterCount = this.users_old.filter(u => u.original_auth == 1).length;
+
+      // 만약 화면에 표시된 마스터가 1명뿐이라면 차단
+      if (masterCount <= 1) {
+        alert("최소 한 명의 마스터 계정이 존재해야 합니다. 변경할 수 없습니다.");
+        user.auth = user.original_auth; // 원래대로 복구
+        user.is_edit = false;
+        return;
+      }
+    }
+
+      if(confirm('권한을 변경하시겠습니까?')) {
         axios.post("http://localhost:9000/update_olduser_auth", { user_id: user.user_id, auth: user.auth })
-        .then(resp => {
-          if(resp.data === "YES") {
-            alert("변경되었습니다.");
-            user.original_auth = user.auth;
-            user.is_edit = false;
-          }
-        });
+          .then(resp => { if(resp.data === "YES") { alert("변경되었습니다."); user.original_auth = user.auth; user.is_edit = false; } });
       }
     },
     approve_user(user_id) {
-      if(confirm(`${user_id} 사용자를 승인하시겠습니까?`)) {
-        axios.post("http://localhost:9000/approve_user", { user_id: user_id })
-          .then(resp => { 
-            if(resp.data === "YES") { this.get_newuser_list(); this.search_users(); }
-          });
-      }
+       axios.post("http://localhost:9000/approve_user", { user_id }).then(() => { this.get_newuser_list(); this.search_users(); });
     },
     reject_user(user_id) {
-      if(confirm(`${user_id} 요청을 거절하시겠습니까?`)) {
-        axios.post("http://localhost:9000/reject_user", { user_id: user_id })
-          .then(resp => { 
-            if(resp.data === "YES") { this.get_newuser_list(); this.search_users(); }
-          });
-      }
+       axios.post("http://localhost:9000/reject_user", { user_id }).then(() => { this.get_newuser_list(); this.search_users(); });
     },
     delete_user(user_id) {
-      if(confirm(`${user_id} 계정을 삭제하시겠습니까?`)) {
-        axios.post("http://localhost:9000/reject_user", { user_id: user_id })
-          .then(resp => { 
-            if(resp.data === "YES") { 
-              alert("삭제되었습니다.");
-              this.search_users(); 
-            }
-          });
-      }
+       if(confirm('삭제하시겠습니까?')) axios.post("http://localhost:9000/reject_user", { user_id }).then(() => this.search_users());
+    },
+    batch_approve_users() {
+      axios.post("http://localhost:9000/approve_users_batch", { userIds: this.selected_new_user_ids })
+        .then(() => { this.get_newuser_list(); this.search_users(); });
+    },
+    batch_reject_users() {
+      axios.post("http://localhost:9000/reject_usersBatch", { userIds: this.selected_new_user_ids })
+        .then(() => { this.get_newuser_list(); });
     }
   }
 }
@@ -321,8 +285,42 @@ export default {
 
 <style scoped>
 /* 헤더 우측 그룹 정렬 */
-.header_right_group { display: flex; align-items: center; gap: 12px; }
+.header_right_group {
+  display: flex;
+  align-items: center;
+  gap: 15px; /* 필터와 인원수 사이 간격 */
+  z-index: 2;
+}
 
+.filter_selectors {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+/* 권한 필터 포인트 */
+.auth_filter {
+  border-color: #3f417e;
+  font-weight: bold;
+}
+
+/* 리셋 버튼 */
+.reset_btn {
+  background-color: #fff;
+  border: 1px solid #ccc;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-right: 5px;
+}
+.filter_select {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 13px;
+  background-color: #fff;
+  outline: none;
+}
 /* 일괄 관리 컨트롤 바 디자인 */
 .batch_control_area {
   display: flex; align-items: center; background-color: #fff; padding: 4px 12px;
@@ -345,7 +343,26 @@ export default {
 .admin_user_management { padding: 20px; }
 .mypage_wrapper { width: 100%; background-color: #ffffff; font-family: 'Pretendard', sans-serif; color: #333; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
 .mb_5 { margin-bottom: 50px; }
-.mypage_header { display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; background-color: #eeeeee; border-bottom: 1px solid #ddd; }
+.mypage_header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative; 
+  padding: 15px 25px;
+  background-color: #eeeeee;
+  border-bottom: 1px solid #ddd;
+}
+
+.search_area_center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 350px;
+  z-index: 1;
+}
 .title { font-size: 18px; font-weight: 700; margin: 0; white-space: nowrap; }
 .search_area { display: flex; gap: 8px; margin: 0 20px; flex: 1; max-width: 350px; }
 .search_input { flex: 1; padding: 6px 15px; border-radius: 20px; border: 1px solid #ccc; font-size: 13px; outline: none; }
