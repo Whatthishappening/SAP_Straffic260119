@@ -42,7 +42,9 @@
           <div class="nav-item" @click="handleViewChange('statusstation')" :class="{ active: currentView === 'statusstation' }">▶역별현황</div>
           <div class="nav-item" @click="handleViewChange('DataAnalysis')" :class="{ active: currentView === 'DataAnalysis' }">▶통계 분석</div>
           <div class="nav-item" @click="handleViewChange('insident')" :class="{ active: currentView === 'insident' }">▶장애/이슈</div>
-          <div class="nav-item" @click="handleViewChange('management')" :class="{ active: currentView === 'management' }">▶사용자 관리</div>
+          <div v-if="Number(userData.auth) === 1" class="nav-item" @click="handleViewChange('management')" :class="{ active: currentView === 'management' }">
+            ▶사용자 관리
+          </div>
         </nav>
       </aside>
 
@@ -62,7 +64,7 @@
       <div class="footer-content">
         <img :src="logofooter" alt="footer logo" class="footer-inline-logo" />
         <span class="copyright">
-          <table>
+          <table class="footer-info-table">
             <tbody>
               <tr>
                 <td class="f-name">배영환</td>
@@ -97,11 +99,15 @@
         </span>
       </div>
     </footer>
+
+    <div v-if="isLoggedIn" class="virtual-scroll-viewport" ref="virtualScrollBox" @scroll="syncRealScroll">
+      <div class="virtual-scroll-content" :style="{ width: virtualWidth + 'px' }"></div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, nextTick } from 'vue'; // ★ nextTick 추가됨!
+import { ref, reactive, onMounted, nextTick, onUnmounted } from 'vue';
 import logo from './assets/로고.png'
 import logofooter from './assets/로고 글자.png'
 import mypageimage from './assets/마이페이지(W).png'
@@ -122,18 +128,40 @@ const currentView = ref('Login');
 const isLoggedIn = ref(false);
 const selectedIncidentId = ref(null);
 
+// 가상 스크롤바 관련 상태
+const virtualScrollBox = ref(null);
+const virtualWidth = ref(1200);
+
 const userData = reactive({
   id: '',
   name: '',
   line_name: 'default',
-  station_name: ''
+  station_name: '',
+  auth: null
 });
 
-// 뷰 변경 핸들러
+// 가상 스크롤바 제어 로직
+const syncRealScroll = (e) => {
+  document.documentElement.scrollLeft = e.target.scrollLeft;
+  document.body.scrollLeft = e.target.scrollLeft;
+};
+
+const updateVirtualWidth = () => {
+  const layoutEl = document.querySelector('.layout');
+  if (layoutEl) {
+    virtualWidth.value = layoutEl.scrollWidth;
+  }
+};
+
+const handleWindowScroll = () => {
+  if (virtualScrollBox.value) {
+    virtualScrollBox.value.scrollLeft = window.scrollX;
+  }
+};
+
 const handleViewChange = (viewName, payload = null) => {
   currentView.value = viewName;
   selectedIncidentId.value = payload;
-
   history.pushState({ view: viewName, id: payload }, '');
   sessionStorage.setItem("last_view", viewName);
   if (payload) {
@@ -141,16 +169,17 @@ const handleViewChange = (viewName, payload = null) => {
   } else {
     sessionStorage.removeItem("last_view_data");
   }
+  // 뷰 변경 시 페이지 너비가 바뀔 수 있으므로 업데이트
+  nextTick(updateVirtualWidth);
 };
 
-// [수정] 성공 여부를 반환하도록 개선
 const applyUserData = (payload) => {
   if (!payload || (!payload.id && !payload.user_id)) return false;
-  
   userData.id = payload.user_id || payload.id || '';
   userData.name = payload.user_name || payload.name || '';
   userData.line_name = payload.line_name || 'default';
   userData.station_name = payload.station_name || '';
+  userData.auth = payload.auth;
   isLoggedIn.value = true;
   return true;
 };
@@ -176,6 +205,13 @@ onMounted(() => {
     }
   }
 
+  // 가상 스크롤바 초기화 및 이벤트 등록
+  nextTick(() => {
+    updateVirtualWidth();
+    window.addEventListener('resize', updateVirtualWidth);
+    window.addEventListener('scroll', handleWindowScroll);
+  });
+
   window.addEventListener('popstate', (event) => {
     if (event.state) {
       currentView.value = event.state.view;
@@ -184,20 +220,20 @@ onMounted(() => {
   });
 });
 
-// [핵심 수정] 로그인 성공 로직
+onUnmounted(() => {
+  window.removeEventListener('resize', updateVirtualWidth);
+  window.removeEventListener('scroll', handleWindowScroll);
+});
+
 const handleLoginSuccess = async (payload) => {
-  console.log("로그인 데이터 수신:", payload); 
-  
   const success = applyUserData(payload);
-  
   if (success) {
     sessionStorage.setItem("user_info", JSON.stringify(payload));
     sessionStorage.setItem("last_view", "Home");
-    
-    // isLoggedIn이 true로 바뀐 후 DOM이 업데이트될 때까지 기다림
     await nextTick();
     currentView.value = 'Home';
     history.replaceState({ view: 'Home', id: null }, '');
+    updateVirtualWidth();
   } else {
     alert("로그인 정보가 올바르지 않습니다.");
   }
@@ -207,20 +243,49 @@ const logout = () => {
   isLoggedIn.value = false;
   sessionStorage.clear();
   currentView.value = 'Login';
-  location.reload(); // 안전하게 새로고침으로 상태 초기화
+  location.reload();
 };
 </script>
 
 <style>
-/* --- 기본 리셋 --- */
+/* 1. 기본 스타일 */
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { overflow-y: auto; overflow-x: hidden; min-height: 100vh; font-family: 'Pretendard', sans-serif; }
 
-/* --- 레이아웃 구조 --- */
-.layout { display: flex; flex-direction: column; min-height: 100vh; width: 100vw; }
-.container { display: flex; flex: 1; }
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  /* 가로 스크롤을 시스템 바닥 대신 가상 바로 대체하기 위해 숨김 */
+  overflow-x: auto !important; 
+  overflow-y: auto;
+}
 
-/* --- 헤더 스타일 --- */
+body {
+  min-height: 100vh;
+}
+
+/* 2. 전체 레이아웃 */
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-width: 1400px; /* 컨텐츠 최소너비 고정 */
+  width: 100%;
+  position: relative;
+}
+
+.container {
+  display: flex;
+  flex: 1; 
+  width: 100%;
+  height: auto; 
+}
+.header, .footer {
+  width: 100%;
+  min-width: 1400px;
+}
+/* 3. 헤더 */
 .header {
   height: 160px;
   display: flex;
@@ -228,7 +293,10 @@ body { overflow-y: auto; overflow-x: hidden; min-height: 100vh; font-family: 'Pr
   color: white;
   border-bottom: 2px solid rgba(0,0,0,0.1);
   flex-shrink: 0;
+  width: 100%;
+  min-width: 1200px;
 }
+
 .header-left-col {
   width: 240px;
   display: flex;
@@ -237,6 +305,7 @@ body { overflow-y: auto; overflow-x: hidden; min-height: 100vh; font-family: 'Pr
   border-right: 1px solid rgba(255,255,255,0.1);
   cursor: pointer;
 }
+
 .company-logo { width: 180px; height: auto; }
 .header-right-col { flex: 1; display: flex; flex-direction: column; }
 .header-status-row { flex: 1.2; display: flex; align-items: center; justify-content: flex-end; padding: 0 30px; }
@@ -248,9 +317,10 @@ body { overflow-y: auto; overflow-x: hidden; min-height: 100vh; font-family: 'Pr
   padding: 0 30px;
   background-color: rgba(0, 0, 0, 0.1);
 }
+
 .sub-nav-text { font-size: 1.2rem; font-weight: 500; }
 
-/* --- 사이드바 스타일 --- */
+/* 4. 사이드바 */
 .sidebar {
   width: 240px;
   background-color: #f8f9fa;
@@ -259,26 +329,80 @@ body { overflow-y: auto; overflow-x: hidden; min-height: 100vh; font-family: 'Pr
   flex-shrink: 0;
   font-size: 2.5ch;
 }
+
 .nav-item { padding: 12px; margin-bottom: 5px; cursor: pointer; border-radius: 8px; color: #555; transition: 0.2s; }
 
-/* --- 컨텐츠 --- */
-.content { flex: 1; padding: 30px; background-color: #fcfcfc; }
+/* 5. 컨텐츠 */
+.content {
+  flex: 1;
+  padding: 30px;
+  background-color: #fcfcfc;
+  min-height: 100%; 
+}
 
-/* --- 푸터 --- */
+/* 6. 푸터 */
 .footer {
   width: 100%;
-  min-height: 100px;
+  min-width: 1200px;
+  min-height: 140px;
   background-color: #eee;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px 0;
+  padding: 10px 0;
 }
-.footer-content { display: flex; align-items: center; gap: 20px; }
-.footer-inline-logo { height: 60px; }
-.footer .copyright table { color: #666; font-size: 0.8rem; }
 
-/* --- 호선별 테마 --- */
+.footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+  width: 100%;
+}
+
+.footer .copyright table {
+  color: #666;
+  font-size: 0.85rem;
+  border-collapse: collapse;
+  font-family: 'Pretendard', sans-serif;
+  line-height: 1.6;
+}
+
+.footer .copyright td { white-space: pre; padding: 2px 0; }
+.footer-inline-logo { height: 60px; }
+
+/* 7. 가상 스크롤바 (핵심!) */
+.virtual-scroll-viewport {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 16px; /* 잡기 편하도록 두께 설정 */
+  overflow-x: auto;
+  overflow-y: hidden;
+  z-index: 10000;
+  background: rgba(255, 255, 255, 0.8); /* 약간의 배경색 */
+  border-top: 1px solid #ccc;
+}
+
+.virtual-scroll-content {
+  height: 1px;
+}
+
+/* 가상 스크롤바 디자인 */
+.virtual-scroll-viewport::-webkit-scrollbar { height: 10px; }
+.virtual-scroll-viewport::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+}
+.virtual-scroll-viewport:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* 브라우저 기본 하단 가로바는 가리기 */
+html::-webkit-scrollbar { height: 0px; }
+
+/* 8. 호선 테마 및 기타 */
 .layout.line_name-1호선 .header, .layout.line_name-1호선 .footer { background-color: #2a317c !important; }
 .layout.line_name-1호선 .nav-item.active { background-color: #2a317c !important; color: white !important; }
 
@@ -313,9 +437,11 @@ body { overflow-y: auto; overflow-x: hidden; min-height: 100vh; font-family: 'Pr
   display: flex; justify-content: center; align-items: center;
   background: linear-gradient(135deg, #2c3e50 0%, #000000 100%);
 }
+
 .logout-small-btn {
   background: transparent; border: 1px solid rgba(255, 255, 255, 0.5); color: white;
   padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px;
 }
+
 .header-mypageimage { width: 32px; height: 32px; border-radius: 50%; margin-left: 10px; vertical-align: middle; }
 </style>
