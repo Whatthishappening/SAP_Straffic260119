@@ -13,13 +13,13 @@
       <!-- 아이디 -->
       <div class="input-box">
         <span class="icon">👤</span>
-        <input v-model="user_id" placeholder="아이디" />
+        <input v-model="user_id" placeholder="아이디" @keyup.enter="login" />
       </div>
 
       <!-- 비밀번호 -->
       <div class="input-box">
         <span class="icon">🔒</span>
-        <input v-model="user_pw" type="password" placeholder="비밀번호" />
+        <input v-model="user_pw" type="password" placeholder="비밀번호" @keyup.enter="login" />
       </div>
 
       <!-- ID 저장 -->
@@ -106,9 +106,6 @@ export default{
 
         // 세션 저장
         sessionStorage.setItem("login", JSON.stringify(user));
-        
-        alert('로그인 성공');
-
         
         this.$emit('login-success', {
           id: user.user_id,          
