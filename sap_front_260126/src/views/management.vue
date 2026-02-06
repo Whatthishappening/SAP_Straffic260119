@@ -284,12 +284,12 @@ export default {
 </script>
 
 <style scoped>
-/* 헤더 우측 그룹 정렬 */
+
 .header_right_group {
   display: flex;
   align-items: center;
-  gap: 15px; /* 필터와 인원수 사이 간격 */
-  z-index: 2;
+  gap: 15px;
+  flex-shrink: 0; 
 }
 
 .filter_selectors {
@@ -345,28 +345,40 @@ export default {
 .mb_5 { margin-bottom: 50px; }
 .mypage_header {
   display: flex;
-  justify-content: space-between;
+  justify-content: space-between; /* 양 끝 정렬 */
   align-items: center;
-  position: relative; 
   padding: 15px 25px;
   background-color: #eeeeee;
   border-bottom: 1px solid #ddd;
+  gap: 20px;
+  min-width: 1000px;
 }
 
 .search_area_center {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
+  justify-content: center; 
   gap: 8px;
-  width: 100%;
-  max-width: 350px;
-  z-index: 1;
+  flex: 1; 
+  max-width: 450px; 
+  min-width: 250px; 
 }
-.title { font-size: 18px; font-weight: 700; margin: 0; white-space: nowrap; }
+.title { 
+  font-size: 18px; 
+  font-weight: 700; 
+  margin: 0; 
+  white-space: nowrap; 
+  flex-shrink: 0; /* 제목이 찌그러지지 않게 */
+}
 .search_area { display: flex; gap: 8px; margin: 0 20px; flex: 1; max-width: 350px; }
-.search_input { flex: 1; padding: 6px 15px; border-radius: 20px; border: 1px solid #ccc; font-size: 13px; outline: none; }
-.search_btn { background-color: #3f417e; color: #fff; border: none; padding: 6px 18px; border-radius: 20px; font-size: 13px; cursor: pointer; }
+.search_input {
+  width: 100%;
+  padding: 6px 15px;
+  border-radius: 20px;
+  border: 1px solid #ccc;
+  font-size: 13px;
+  outline: none;
+}
+.search_btn { background-color: #3f417e; color: #fff; border: none; padding: 6px 18px; width: 80px;   border-radius: 20px; font-size: 13px; cursor: pointer; }
 .user_count { background-color: #3f417e; color: #fff; padding: 5px 18px; border-radius: 20px; font-size: 12px; }
 .info_section { padding: 20px; }
 .user_table { width: 100%; border-collapse: collapse; }
