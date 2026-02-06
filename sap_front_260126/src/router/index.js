@@ -47,6 +47,7 @@ const router = createRouter({
     { path: '/user/insident', 
       name: 'insident', 
       component: insident },
+      
     { path: '/user/insident/create', 
       name: 'Createinsident', 
 

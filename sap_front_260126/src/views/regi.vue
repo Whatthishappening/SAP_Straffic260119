@@ -129,30 +129,48 @@ export default {
       }).catch(err => { alert(err); });
     },
     adduser() {
-      // 1. 중복 확인 체크
       if (this.isIdChecked === false) {
         alert("아이디 중복 확인을 해주세요.");
         return;
       }
 
-      // 2. 이메일 형식 정규식 검사 (google.co 같은 형태 차단)
-      // emailPattern: 끝마디가 최소 3글자 이상인 경우 (.com, .net 등)
-      // isCountryCode: .2글자.2글자 형태인 경우 (.co.kr, .or.kr 등)
+      // 이메일 도메인 추출
+      const domain = this.email_domain_select === 'direct' 
+                     ? this.email_domain_direct 
+                     : this.email_domain_select;
+
+      // 허용된 이메일 서비스 도메인 목록
+      const allowedDomains = [
+        'naver.com', 'gmail.com', 'daum.net', 'hanmail.net', 
+        'nate.com', 'outlook.com', 'icloud.com', 'kakao.com'
+      ];
+      
+      // 국가 코드 형식 검증 (.co.kr, .or.kr 등)
+      const isCountryCode = /\.[a-zA-Z]{2}\.[a-zA-Z]{2}$/.test(domain);
+
+      // 1. 기본 구조 검증 (글자수 등 기존 로직)
       const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{3,}$/;
-      const isCountryCode = /\.[a-zA-Z]{2}\.[a-zA-Z]{2}$/.test(this.fullEmail);
-
+      
       if (!emailPattern.test(this.fullEmail) && !isCountryCode) {
-        alert("이메일 주소 형식이 잘못되었습니다.\n다시 확인해주세요.");
-        return; // 값 유지하며 중단
-      }
-
-      // 3. 비밀번호 일치 확인
-      if (this.add_pw !== this.check_pw) {
-        alert("비밀번호가 일치하지 않습니다.");
+        alert("이메일 주소 형식이 잘못되었습니다.");
         return;
       }
 
-      // 전송용 데이터 정리
+      // 2. 직접 입력 시 도메인 종류 검증 (피드백 반영)
+      if (this.email_domain_select === 'direct') {
+        if (!allowedDomains.includes(domain) && !isCountryCode) {
+          alert("존재하지 않거나 지원하지 않는 이메일 종류입니다.\n이메일을 다시 확인해주세요.");
+          return;
+        }
+      }
+
+      if (this.add_pw !== this.check_pw) {
+        alert("비밀번호가 일치하지 않습니다.");
+        this.add_pw = '';
+        this.check_pw = '';
+        return;
+      }
+
       const cleanName = this.add_name.replace(/\s/g, '');
       const cleanId = this.add_id.replace(/\s/g, '');
 

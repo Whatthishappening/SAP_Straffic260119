@@ -23,11 +23,19 @@ public class DashboardController {
 	DashboardService service;
 	
 	@GetMapping("get_dashboard")
-	public ResponseEntity<DashboardDto> getDashboard(@RequestParam("auth") String auth,
-													 @RequestParam("station_id") String station_id){
-		System.out.println("DashboardController get_dashboard " + new Date());
+	public ResponseEntity<DashboardDto> getDashboard(
+            @RequestParam("auth") String auth,
+            @RequestParam(value = "station_id", required = false) String station_id,
+            @RequestParam(value = "user_id", required = false) String user_id) { 
 		
-		return ResponseEntity.ok(service.getDashboard(auth, station_id));
+		// 1. 요청 정보 확인용 로그 (기존 유지)
+		System.out.println("DashboardController get_dashboard 실행 시간: " + new Date());
+		System.out.println("요청 유저ID: " + user_id + ", 권한(auth): " + auth + ", 역 ID(station_id): " + station_id);
+		
+		// 2. 서비스 호출 
+		DashboardDto result = service.getDashboard(auth, station_id, user_id);
+		
+		// 3. 응답 반환
+		return ResponseEntity.ok(result);
 	}
-
 }
