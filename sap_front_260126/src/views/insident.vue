@@ -192,7 +192,7 @@ const indicatorStyle = computed(() => {
 const onBulkStationSelected = async (stationData) => {
   // stationData 예시: { station_name: '강남', line_name: '2호선' }
   if (!stationData || selectedIds.value.length === 0) return;
-
+  const isReset = !stationData || !stationData.station_name;
   const confirmMsg = `${selectedIds.value.length}개의 이슈 위치를 [${stationData.line_name} ${stationData.station_name}]으로 일괄 변경하시겠습니까?`;
 
   if (confirm(confirmMsg)) {
@@ -202,7 +202,7 @@ const onBulkStationSelected = async (stationData) => {
         updateType: 'location',
         updateValue: stationData.station_name, // 역 이름
         lineName: stationData.line_name,       // 서버 Mybatis에서 사용할 호선 정보
-        station_id: stationData.station_id
+        station_id: isReset ? null : stationData.station_id
       
       };
 
