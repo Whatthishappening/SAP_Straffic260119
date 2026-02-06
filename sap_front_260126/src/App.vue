@@ -256,9 +256,9 @@ html, body {
   padding: 0;
   width: 100%;
   min-height: 100vh;
-  /* 가로 스크롤을 시스템 바닥 대신 가상 바로 대체하기 위해 숨김 */
-  overflow-x: auto !important; 
-  overflow-y: auto;
+  /* 가로 스크롤은 가상 바가 담당하므로 기본 바는 숨김 */
+  overflow-x: hidden; 
+  overflow-y: auto !important; 
 }
 
 body {
@@ -270,16 +270,14 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  min-width: 1400px; /* 컨텐츠 최소너비 고정 */
+  min-width: 1400px; 
   width: 100%;
-  position: relative;
 }
 
 .container {
   display: flex;
   flex: 1; 
   width: 100%;
-  height: auto; 
 }
 .header, .footer {
   width: 100%;
@@ -371,26 +369,49 @@ body {
 .footer .copyright td { white-space: pre; padding: 2px 0; }
 .footer-inline-logo { height: 60px; }
 
-/* 7. 가상 스크롤바 (핵심!) */
 .virtual-scroll-viewport {
   position: fixed;
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 16px; /* 잡기 편하도록 두께 설정 */
+  height: 14px; 
   overflow-x: auto;
   overflow-y: hidden;
   z-index: 10000;
-  background: rgba(255, 255, 255, 0.8); /* 약간의 배경색 */
+  background: #e0e0e0;
   border-top: 1px solid #ccc;
 }
+.virtual-scroll-viewport::-webkit-scrollbar-thumb {
+  background: #3f417e; /* 기본 포인트 컬러 */
+  border-radius: 10px;
+}
 
+html::-webkit-scrollbar { 
+  width: 12px !important; /* 다시 살리기 */
+  height: 12px !important; 
+}
 .virtual-scroll-content {
   height: 1px;
 }
 
 /* 가상 스크롤바 디자인 */
-.virtual-scroll-viewport::-webkit-scrollbar { height: 10px; }
+.virtual-scroll-viewport::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1; 
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888; 
+  border-radius: 6px;
+  border: 3px solid #f1f1f1; /* 트랙이랑 겹쳐 보이지 않게 테두리 추가 */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555; 
+}
 .virtual-scroll-viewport::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.3);
   border-radius: 10px;
