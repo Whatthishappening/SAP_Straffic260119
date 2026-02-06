@@ -116,7 +116,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'; // onUnmounted 추가
 import axios from 'axios';
 import Chart from 'chart.js/auto';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
@@ -131,10 +131,14 @@ const seoulWeather = ref({ tm: '', wd: 0, ws: 0, ta: 0, hm: 0, rn: 0 });
 let lockerChart = null;
 let hourlyChart = null;
 let weeklyChartInstance = null;
+let refreshTimer = null; // 타이머 변수
 
+// 데이터를 가져오고 화면을 그리는 핵심 함수
 const fetchData = async () => {
   try {
     const loginData = sessionStorage.getItem("login") || sessionStorage.getItem("user_info");
+    if (!loginData) return;
+    
     const user = JSON.parse(loginData);
     userAuth.value = String(user.auth);
 
@@ -143,6 +147,7 @@ const fetchData = async () => {
     });
 
     if (res.data) {
+      // 1. 데이터 할당 (이때 날씨, 이슈 건수 등 모든 텍스트/숫자가 바뀜)
       dashboardData.value = res.data;
       seoulWeather.value = {
         tm: res.data.weather_tm || '', 
@@ -157,12 +162,16 @@ const fetchData = async () => {
         userLine.value = String(res.data.station_id || user.station_id).charAt(0);
       }
 
+      // 2. 차트 초기화 및 재생성
       await nextTick();
       initCharts();
     }
-  } catch (err) { console.error("데이터 로딩 오류:", err); }
+  } catch (err) { 
+    console.error("30초 주기 데이터 갱신 실패:", err); 
+  }
 };
 
+// 차트 생성 로직 (기존 차트 삭제 후 재생성)
 const initCharts = () => {
   if (lockerChart) { lockerChart.destroy(); lockerChart = null; }
   if (hourlyChart) { hourlyChart.destroy(); hourlyChart = null; }
@@ -171,7 +180,7 @@ const initCharts = () => {
   const data = dashboardData.value;
   if (!data) return;
 
-  // 1. 물품보관함 도넛 (정상화)
+  // 1. 물품보관함 도넛
   const ctxUsed = document.getElementById('usedStorageChart')?.getContext('2d');
   if (ctxUsed) {
     const t = Number(data.total_lockers || 0);
@@ -179,11 +188,11 @@ const initCharts = () => {
     lockerChart = new Chart(ctxUsed, { 
       type: 'doughnut', 
       data: { datasets: [{ data: t === 0 ? [0, 1] : [u, t - u], backgroundColor: ['#36A2EB', '#f2f2f2'], borderWidth: 0 }] },
-      options: { cutout: '70%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: t !== 0 } } }
+      options: { cutout: '70%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
   }
 
-  // 2. 실시간 이용률 (정수 표기 및 Styling)
+  // 2. 실시간 이용률 (정수 표기)
   const ctxHourly = document.getElementById('hourlyChart')?.getContext('2d');
   if (ctxHourly) {
     const labels = ['08시', '11시', '14시', '17시', '20시', '23시'];
@@ -207,7 +216,7 @@ const initCharts = () => {
     });
   }
 
-  // 3. 장애발생 현황 (막대 노출 정규화)
+  // 3. 장애발생 현황
   const ctxWeekly = document.getElementById('weeklyChart')?.getContext('2d');
   const weeklyData = data.weekly_issue || [];
   if (ctxWeekly) {
@@ -261,7 +270,15 @@ const goBackToList = () => emit('go-list');
 const goTrainInfo = () => window.open("https://smss.seoulmetro.co.kr/traininfo/traininfoUserView.do", '_blank');
 const goWeatherDetail = () => window.open("https://weather.naver.com/map/", '_blank');
 
-onMounted(fetchData);
+// 생명주기 관리
+onMounted(() => {
+  fetchData(); // 최초 로드
+  refreshTimer = setInterval(fetchData, 15000); // 30초마다 무조건 실행
+});
+
+onUnmounted(() => {
+  if (refreshTimer) clearInterval(refreshTimer); // 페이지 이탈 시 종료
+});
 </script>
 
 <style scoped>
