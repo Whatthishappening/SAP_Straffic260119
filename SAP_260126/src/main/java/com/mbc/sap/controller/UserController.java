@@ -157,25 +157,27 @@ public class UserController {
         }
     }
     
+ // 기존 가입 계정 조회 (검색/필터 포함)
     @GetMapping("get_olduserlist")
     public Map<String, Object> get_olduserlist(UserParam param) {
-        //현재 페이지 번호를 바탕으로 DB 시작점(offset) 계산
-        param.setOffset((param.getPageNumber() - 1) * 5); 
+        // 1. 페이지네이션 처리 (5개씩 노출)
+        // Vue에서 page_old를 0부터 시작해서 요청마다 ++하므로 계산식은 적절합니다.
+        param.setOffset(param.getPageNumber() * 5); 
 
-        System.out.println("요청된 페이지: " + param.getPageNumber());
-        System.out.println("계산된 오프셋: " + param.getOffset()); // 로그로 확인 가능
+        System.out.println("--- 기존 유저 조회 ---");
+        System.out.println("호선: " + param.getLine_name());
+        System.out.println("역명: " + param.getStation_name());
+        System.out.println("권한: " + param.getAuth()); // [추가] 권한 필터링 확인용 로그
         System.out.println("검색어: " + param.getSearchKeyword());
+        System.out.println("오프셋: " + param.getOffset());
         
-        // 1. 리스트 조회 (이제 계산된 offset이 적용된 쿼리가 나갑니다)
+        // 2. 서비스 호출
         List<UserDto> list = service.get_olduserlist(param);
-        
-        // 2. 검색어가 적용된 전체 결과 개수 조회
         int count = service.count_olduser(param); 
         
         Map<String, Object> map = new HashMap<>();
         map.put("olduserlist", list);
         map.put("cnt", count);
-        map.put("curPage", param.getPageNumber());
         
         return map;
     }

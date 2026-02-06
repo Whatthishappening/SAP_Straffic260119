@@ -29,23 +29,61 @@
         
            </li>
           <li v-if="current_pw.trim() !== ''">
-             <span class="bullet">●</span>
-            <span class="label">새 PW :</span>
-            <input type="password" class="edit-input" v-model="user_pw" placeholder="본인 확인용 비밀번호 입력" />
-          </li>
-          <li>
-            <span class="bullet">●</span>
-            <span class="label">E-mail :</span>
-            <input type="text" class="edit-input" v-model="user_email" />
-          </li>
+  <span class="bullet">●</span>
+  <span class="label">새 PW :</span>
+  <div class="pw-input-wrapper">
+    <input type="password" class="edit-input" v-model="user_pw" placeholder="본인 확인용 비밀번호 입력" />
+    <p class="pw-guide">
+      * 8~16자 이내, 영문/숫자/특수문자 조합 (ID와 동일 불가)
+    </p>
+  </div>
+</li>
+      <li>
+  <span class="bullet">●</span>
+  <span class="label">E-mail :</span>
+  <div class="email-row">
+    <div class="email-id-box">
+      <input v-model.trim="email_id" type="text" class="edit-input email-input" />
+    </div>
+    <span class="at">@</span>
+    <div class="email-domain-box">
+      <input v-if="email_domain_select === 'direct'" 
+             v-model.trim="email_domain_direct" 
+             type="text" class="edit-input email-input" placeholder="직접 입력" />
+      <select v-else v-model="email_domain_select" class="edit-input email-select">
+        <option value="naver.com">naver.com</option>
+        <option value="gmail.com">gmail.com</option>
+        <option value="daum.net">daum.net</option>
+        <option value="direct">직접 입력</option>
+      </select>
+    </div>
+    <button v-if="email_domain_select === 'direct'" 
+            @click="email_domain_select = 'naver.com'" 
+            class="reset-domain">X</button>
+  </div>
+</li>
           <li class="route-container">
-            <div class="route-header">
-              <span class="bullet">●</span>
-              <span class="label">담당 노선 정보</span>
-            </div>
-            <div class="section-title">역 선택 (현재: {{ selectedSubway.station_name || '미선택' }})</div>
-            <SubwaySelector @update-selection="handleSubwayChange" />
-          </li>
+  <div class="route-header">
+    <span class="bullet">●</span>
+    <span class="label">담당 노선 정보</span>
+  </div>
+  
+  <div class="route-selector-card">
+    <div class="current-selection-info">
+      <span class="info-label">현재 설정된 구역 :</span>
+      <div v-if="selectedSubway.line_name" class="selection-badge">
+        <span class="badge-line">{{ selectedSubway.line_name }}</span>
+        <span class="badge-station">{{ selectedSubway.station_name }}</span>
+      </div>
+      <span v-else class="no-selection">노선과 역을 선택해주세요.</span>
+    </div>
+    
+    <div class="selector-wrapper">
+      <SubwaySelector @update-selection="handleSubwayChange" />
+    </div>
+    <p class="selector-tip">* 수정 시 아래 셀렉트 박스에서 새로운 호선과 역을 선택하세요.</p>
+  </div>
+</li>
         </ul>
       </div>
     </div>
@@ -64,8 +102,11 @@ export default {
       user_name: "",
       current_pw: "",
       user_pw: "",
-      user_email: "",
-      selectedSubway: { line_name: '', station_id: '', station_name: '' }
+      email_id: "",
+      email_domain_select: "naver.com",
+      email_domain_direct: "",
+      selectedSubway: { line_name: '', station_id: '', station_name: '' },
+      originData: null // 수정 여부 판단용 원본 저장소
     };
   },
   watch: {
@@ -75,32 +116,52 @@ export default {
       }
     }
   },
+
+  computed: {
+    fullEmail() {
+      const domain = this.email_domain_select === 'direct' 
+                     ? this.email_domain_direct 
+                     : this.email_domain_select;
+      return this.email_id && domain ? `${this.email_id}@${domain}` : '';
+    }
+  },
+
   mounted() {
     const sessionData = sessionStorage.getItem("user_info") || sessionStorage.getItem("login");
     const login = JSON.parse(sessionData);
 
-    
     if (!login) {
       alert("로그인이 필요합니다.");
       this.$emit('change-view', 'Home');
       return;
     }
+
+    // 1. 먼저 데이터를 화면 변수에 싹 채웁니다.
     this.user_id = login.user_id || login.id || '';
     this.user_name = login.user_name || login.name || '';
-    this.user_email = login.user_email || login.email || '';
-    this.selectedSubway.line_name = ''; 
-    this.selectedSubway.station_name = '';
-    this.selectedSubway.station_id = '';
+    
+    const fullEmail = login.user_email || login.email || '';
+    if (fullEmail.includes('@')) {
+      const parts = fullEmail.split('@');
+      this.email_id = parts[0];
+      const domain = parts[1];
+      const commonDomains = ['naver.com', 'gmail.com', 'daum.net'];
+      if (commonDomains.includes(domain)) {
+        this.email_domain_select = domain;
+      } else {
+        this.email_domain_select = 'direct';
+        this.email_domain_direct = domain;
+      }
+    }
 
-    // ★ 기존 담당 정보를 미리 넣어둠 (비밀번호만 바꿀 때 유용)
     this.selectedSubway.line_name = login.line_name || ''; 
     this.selectedSubway.station_name = login.station_name || '';
     this.selectedSubway.station_id = login.station_id || '';
- 
-  },
- 
 
-  
+    // 2. ★데이터가 다 채워진 '후'에 현재 상태를 원본으로 딱 저장합니다!
+    this.saveOrigin();
+  },
+
   methods: {
     handleSubwayChange(data) {
       this.selectedSubway.line_name = data.line_name;
@@ -108,29 +169,87 @@ export default {
       this.selectedSubway.station_name = data.station.station_name;
     },
 
-    
+    // 원본 데이터를 캡처하는 함수
+    saveOrigin() {
+      this.originData = JSON.stringify({
+        email_id: this.email_id,
+        email_domain_select: this.email_domain_select,
+        email_domain_direct: this.email_domain_direct,
+        line_name: this.selectedSubway.line_name,
+        station_id: this.selectedSubway.station_id
+      });
+    },
+
     async update_user() {
-      if (!this.selectedSubway.line_name || this.selectedSubway.line_name.trim() === "" || this.selectedSubway.line_name === "미선택") {
-        alert("노선을 선택해주세요.");
+      // 1. 수정 내용이 있는지 체크 (비번 입력 X + 다른 정보 원본과 동일)
+      const currentData = JSON.stringify({
+        email_id: this.email_id,
+        email_domain_select: this.email_domain_select,
+        email_domain_direct: this.email_domain_direct,
+        line_name: this.selectedSubway.line_name,
+        station_id: this.selectedSubway.station_id
+      });
+
+      if (this.user_pw.trim() === "" && this.originData === currentData) {
+        alert("수정된 내용이 없습니다.");
         return;
       }
 
-      if (!this.selectedSubway.station_name || this.selectedSubway.station_name.trim() === "" || this.selectedSubway.station_name === "미선택") {
+      // 2. 비밀번호 유효성 검사 함수 정의
+      const validatePassword = (pw, id, currentPw) => {
+        if (pw.length < 8 || pw.length > 16) {
+          alert("비밀번호는 8자 이상 16자 이하로 설정해주세요.");
+          return false;
+        }
+        if (pw === currentPw) {
+          alert("이전 비밀번호와 똑같은 건 비밀번호 변경불가입니다.");
+          return false;
+        }
+        if (pw === id) {
+          alert("아이디와 동일한 비밀번호는 사용할 수 없습니다.");
+          return false;
+        }
+        const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/;
+        if (!passwordRegex.test(pw)) {
+          alert("비밀번호는 영문, 숫자, 특수문자를 포함해야 합니다.");
+          return false;
+        }
+        return true;
+      };
+
+      // 3. 필수 입력값 체크
+      if (!this.selectedSubway.line_name || this.selectedSubway.line_name === "미선택") {
+        alert("노선을 선택해주세요.");
+        return;
+      }
+      if (!this.selectedSubway.station_name || this.selectedSubway.station_name === "미선택") {
         alert("역을 선택해주세요.");
         return;
       }
+
+      const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{3,}$/;
+      if (!emailPattern.test(this.fullEmail)) {
+        alert("이메일 주소 형식이 잘못되었습니다.");
+        return; 
+      }
+
+      // 4. 전송 데이터 구성
       const updateData = {
         user_id: this.user_id,
-        user_email: this.user_email,
+        user_email: this.fullEmail,
         line_name: this.selectedSubway.line_name,
         station_id: this.selectedSubway.station_id,
         station_name: this.selectedSubway.station_name,
         passwordChange: false
       };
    
+      // 5. 비번 변경 시 시도
       if (this.user_pw.trim() !== "") {
         if (!this.current_pw.trim()) {
           alert("현재 비밀번호를 입력해주세요.");
+          return;
+        }
+        if (!validatePassword(this.user_pw, this.user_id, this.current_pw)) {
           return;
         }
         updateData.user_pw = this.user_pw;
@@ -138,10 +257,11 @@ export default {
         updateData.passwordChange = true;
       }
 
+      // 6. 서버 전송
       try {
         const resp = await axios.post('http://localhost:9000/update_user', updateData);
         if (resp.data === "PW_ERROR") {
-          alert('비밀번호가 틀렸습니다.');
+          alert('현재 비밀번호가 틀렸습니다.');
           this.current_pw = "";
         } else if (resp.data === "YES" || resp.data === 1) {
           alert('수정 완료!');
@@ -151,10 +271,7 @@ export default {
           } else {
             this.updateSession(updateData);
             this.$emit('change-view', 'my');
-          // 약간의 시간차를 두고 새로고침 실행 (이동이 확실히 인지되도록)
-            setTimeout(() => {
-              window.location.reload();
-            }, 100);
+            setTimeout(() => { window.location.reload(); }, 100);
           }
         }
       } catch (err) {
@@ -184,11 +301,119 @@ export default {
 .info-section { padding: 30px; }
 .section-subtitle { font-size: 18px; font-weight: 700; margin-bottom: 25px; }
 .user-info-list { list-style: none; padding: 0; }
-.user-info-list li { display: flex; align-items: center; margin-bottom: 18px; font-size: 16px; }
+.user-info-list li { 
+  display: flex; 
+  align-items: center; 
+  margin-bottom: 28px; 
+  font-size: 16px; 
+}
+
+
+.pw-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px; 
+}
+.pw-guide {
+  font-size: 12px;
+  color: #e74c3c;
+  margin: 0;
+  padding-left: 2px;
+}
+
+
+.email-row {
+  display: flex;
+  align-items: center;
+  gap: 10px; 
+}
+
+
+.route-container { 
+  flex-direction: column; 
+  align-items: flex-start !important; 
+  margin-top: 35px; 
+  border-top: 1px solid #eee; 
+  padding-top: 25px;
+}
+.route-selector-card {
+  width: 100%;
+  max-width: 550px;
+  background-color: #fcfcfc;
+  border: 1px solid #e1e1e1;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 10px;
+  margin-left: 20px; /* 라벨과 정렬 맞춤 */
+}
+/* 현재 선택 정보 바 */
+.current-selection-info {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px dashed #ddd;
+}
+.info-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  margin-right: 12px;
+}
+/* 선택된 역 뱃지 스타일 */
+.selection-badge {
+  display: inline-flex;
+  align-items: center;
+  background-color: #3f417e;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.badge-line {
+  background-color: #2c2e5a;
+  color: #fff;
+  padding: 4px 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.badge-station {
+  background-color: #fff;
+  color: #3f417e;
+  padding: 4px 12px;
+  font-size: 14px;
+  font-weight: 700;
+  border: 1px solid #3f417e;
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+}
+.no-selection {
+  font-size: 14px;
+  color: #999;
+  font-style: italic;
+}
+/* 셀렉터 영역 */
+.selector-wrapper {
+  margin-bottom: 10px;
+}
+.selector-tip {
+  font-size: 12px;
+  color: #3498db;
+  margin: 8px 0 0 2px;
+  font-weight: 500;
+}
 .bullet { font-size: 8px; margin-right: 12px; }
-.label { font-weight: 700; min-width: 110px; }
+.label { 
+  font-weight: 700; 
+  min-width: 130px; 
+  margin-right: 15px; 
+}
 .edit-input { padding: 5px 10px; border: 1px solid #ccc; border-radius: 4px; width: 250px; font-size: 15px; }
 .edit-input.readonly { background-color: #f5f5f5; border: 1px solid #eee; color: #888; cursor: not-allowed; }
 .route-container { flex-direction: column; align-items: flex-start !important; margin-top: 10px; }
-.route-header { display: flex; align-items: center; margin-bottom: 10px; }
+/* 기존 스타일 유지 및 보정 */
+.route-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
 </style>

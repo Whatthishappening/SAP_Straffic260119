@@ -25,7 +25,7 @@ public class IncidentCommentController {
 	 IncidentCommentService service;
 	 
 	// 1. 댓글 목록 가져오기
-	    @PostMapping("/get_comments")
+	    @PostMapping("get_comments")
 	    public List<IncidentCommentDto> get_comments(@RequestBody Map<String, Object> param) {
 	        // Vue에서 보낸 { incident_id: 123 } 값을 꺼냄
 	        int incident_id = Integer.parseInt(param.get("incident_id").toString());
@@ -37,7 +37,7 @@ public class IncidentCommentController {
 	    }
 	    
 	    // 댓글 저장하기
-	    @PostMapping("/insert_comment")
+	    @PostMapping("insert_comment")
 	    @ResponseBody // JSON 응답을 위해
 	    public String insert_comment(@RequestBody IncidentCommentDto dto) {
 	     
