@@ -31,8 +31,7 @@ public class IncidentCommentController {
 	        int incident_id = Integer.parseInt(param.get("incident_id").toString());
 	        
 	        List<IncidentCommentDto> list = service.get_comments(incident_id);
-	        System.out.println("조회된 댓글 수: " + list.size());
-	        
+	     
 	        return list;
 	    }
 	    
