@@ -136,11 +136,10 @@
         </div>
       </li>
     </ul>
-    
-    <div v-if="isLoading" class="loading-trigger">불러오는 중...</div>
+  
+  <div v-if="isLoading" class="loading-trigger">불러오는 중...</div>
     <div v-if="!hasMore && issues.length > 0" class="end-trigger">마지막 데이터입니다.</div>
-  </div>
-</template>
+  </div> </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
@@ -148,19 +147,17 @@ import axios from 'axios'
 import StationSimpleSelector from './StationSimpleSelector.vue';
 
 const emit = defineEmits(['go-create', 'change-view']) 
-// 날짜 형식을 '26.02.05 12:30' 형태로 변환
+
+// --- 날짜 포맷팅 ---
 const formatDate = (dateStr) => {
   if (!dateStr) return '';
   const date = new Date(dateStr);
   return new Intl.DateTimeFormat('ko-KR', {
-    year: '2-digit',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
+    year: '2-digit', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false
   }).format(date);
 };
+
 // --- 상태 관리 ---
 const activeBulkMenu = ref(null); 
 const statusMap = { '1': '대기', '2': '해결중', '3': '완료', '4': '삭제' };
@@ -169,10 +166,10 @@ const filterSeverity = ref('')
 const filterLine = ref('')
 const filterStation = ref('')
 const filterSort = ref('')
-
 const activeStatus = ref('open')
 const searchType = ref('title') 
 const searchKeyword = ref('')
+
 const issues = ref([])
 const pageNumber = ref(0)
 const totalCount = ref(0)
@@ -182,151 +179,44 @@ const isLoading = ref(false)
 const hasMore = ref(true)
 const selectedIds = ref([]) 
 
-// --- Computed ---
+// --- Computed (계산된 속성) ---
 const isAllSelected = computed(() => issues.value.length > 0 && selectedIds.value.length === issues.value.length)
 const indicatorStyle = computed(() => {
   const isOpen = activeStatus.value === 'open'
   return { left: isOpen ? '0px' : '82px', width: isOpen ? '68px' : '72px', backgroundColor: isOpen ? '#2ecc71' : '#e74c3c' }
 })
 
-const onBulkStationSelected = async (stationData) => {
-  // stationData 예시: { station_name: '강남', line_name: '2호선' }
-  if (!stationData || selectedIds.value.length === 0) return;
-  const isReset = !stationData || !stationData.station_name;
-  const confirmMsg = `${selectedIds.value.length}개의 이슈 위치를 [${stationData.line_name} ${stationData.station_name}]으로 일괄 변경하시겠습니까?`;
-
-  if (confirm(confirmMsg)) {
-    try {
-      const payload = {
-        incident_id: selectedIds.value,
-        updateType: 'location',
-        updateValue: stationData.station_name, // 역 이름
-        lineName: stationData.line_name,       // 서버 Mybatis에서 사용할 호선 정보
-        station_id: isReset ? null : stationData.station_id
-      
-      };
-
-      await axios.post('http://localhost:9000/update_incident_statusBatch', payload);
-      
-      alert('위치 정보가 성공적으로 변경되었습니다.');
-      clearSelection();
-      fetchIssues(true);
-    } catch (err) {
-      console.error(err);
-      alert('위치 변경 중 오류가 발생했습니다.');
-    }
-  }
-};
 const stationsInFilterLine = computed(() => {
-let list = !filterLine.value 
-    ? allStations.value 
-    : allStations.value.filter(st => st.line_name === filterLine.value);
-
-  // 2. 중복 제거 로직 추가 (역 이름 기준)
+  let list = !filterLine.value ? allStations.value : allStations.value.filter(st => st.line_name === filterLine.value);
   const seen = new Set();
-  const uniqueList = list.filter(st => {
-    if (seen.has(st.station_name)) {
-      return false; // 이미 있는 이름이면 제외
-    }
+  return list.filter(st => {
+    if (seen.has(st.station_name)) return false;
     seen.add(st.station_name);
     return true;
-  });
-
-  // 3. 한글 가나다순 정렬
-  return [...uniqueList].sort((a, b) => a.station_name.localeCompare(b.station_name, 'ko'));
+  }).sort((a, b) => a.station_name.localeCompare(b.station_name, 'ko'));
 });
-// --- Logic ---
-const toggleBulkMenu = (type) => {
-  activeBulkMenu.value = activeBulkMenu.value === type ? null : type;
-};
 
-const clearSelection = () => { 
-  selectedIds.value = []; 
-  activeBulkMenu.value = null;
-}
-
-const toggleSelectAll = () => { 
-  selectedIds.value = isAllSelected.value ? [] : issues.value.map(i => i.incident_id); 
-}
-const resetFilter = () => {
-  // 1. 모든 필터 변수 초기화
-  searchKeyword.value = '';
-  searchType.value = 'title';
-  filterSeverity.value = '';
-  filterLine.value = '';
-  filterStation.value = '';
-  filterSort.value = '';
-  // 2. 일괄 선택 상태도 초기화
-  clearSelection();
-  // 3. 서버에서 데이터 다시 불러오기
-  fetchIssues(true);
-};
-const getStatusConfig = (status) => {
-  const configs = { '1': { label: '대기', color: '#9e9e9e' }, '2': { label: '해결중', color: '#0e6ca5' }, '3': { label: '완료', color: '#17f000' }, '4': { label: '삭제', color: '#EEEEEE' } }
-  return configs[status] || { label: status, color: '#333' }
-}
-
-// 일괄 업데이트 함수
-// handleBulkUpdate 함수 수정
-const handleBulkUpdate = async (type, value) => {
-  if (selectedIds.value.length === 0 || !value) return;
-  
-  const confirmMsg = type === 'status' && value === '3' 
-    ? `${selectedIds.value.length}개를 '완료' 처리하시겠습니까? (완료 시간이 기록됩니다)` 
-    : `${selectedIds.value.length}개를 일괄 변경하시겠습니까?`;
-
-  if (confirm(confirmMsg)) {
-    try {
-      // 보낼 데이터 객체 생성
-      const payload = {
-        incident_id: selectedIds.value,
-        updateType: type, 
-        updateValue: value 
-      };
-
-      // ★ 상태 변경이면서 값이 '3'(완료)일 때 status 파라미터를 명시적으로 추가
-      if (type === 'status' && value === '3') {
-        payload.status = '3';
-      }
-
-      await axios.post('http://localhost:9000/update_incident_statusBatch', payload);
-      
-      alert('성공적으로 변경되었습니다.'); 
-      clearSelection();
-      fetchIssues(true);
-    } catch (err) { 
-      alert('변경 중 오류가 발생했습니다.'); 
-    }
-  }
-}
-
-const handleClickOutside = (e) => {
-  if (!e.target.closest('.bulk-menu-item')) {
-    activeBulkMenu.value = null;
-  }
-};
-
-const onStationChange = () => {
-
-  fetchIssues(true);
-}
-
+// --- API 로직 (핵심) ---
 const fetchIssues = async (isNewSearch = false) => {
+  // 1. 중복 호출 방지 및 종료 조건 체크
   if (isLoading.value) return;
-if (isNewSearch) {
+  if (!isNewSearch && !hasMore.value) return;
+
+  // 2. 초기화 (새로운 검색이나 탭 변경 시)
+  if (isNewSearch) {
     pageNumber.value = 0;
     hasMore.value = true;
+    issues.value = [];
   }
-  if (!hasMore.value) return;
 
   isLoading.value = true;
-  const statusType = activeStatus.value === 'open' ? 'active' : 'resolved';
-  
+  console.log(`📡 요청 시작: 페이지 ${pageNumber.value}`);
+
   const sendData = {
     category: searchType.value,
     keyword: searchKeyword.value,
     pageNumber: pageNumber.value,
-    status: statusType,
+    status: activeStatus.value === 'open' ? 'active' : 'resolved',
     sortOrder: filterSort.value,
     severity: filterSeverity.value,
     line_name: filterLine.value,
@@ -336,47 +226,126 @@ if (isNewSearch) {
   try {
     const resp = await axios.post('http://localhost:9000/get_incidentlist', sendData);
     const newItems = resp.data.incidentList || [];
+    const total = resp.data.cnt || 0;
+
+    // 데이터 합치기
     if (pageNumber.value === 0) {
-   issues.value = newItems; 
+      issues.value = newItems;
     } else {
       issues.value = [...issues.value, ...newItems];
     }
-    totalCount.value = resp.data.cnt;
-  if (newItems.length < 10) hasMore.value = false;
-  } catch (err) { console.error("데이터 로드 실패:", err); }
-  finally { isLoading.value = false; }
-}
 
-const handleScroll = () => {
-  const { scrollHeight, scrollTop, clientHeight } = document.documentElement;
- if (Math.ceil(scrollTop + clientHeight) >= scrollHeight - 100) {
-    if (!isLoading.value && hasMore.value) {
-      pageNumber.value++; 
-      fetchIssues();
+    totalCount.value = total;
+    
+    // 3. 마지막 페이지 여부 판단 (전체 개수와 비교)
+    hasMore.value = issues.value.length < total;
+
+    // 4. 성공적으로 가져왔을 때만 다음 페이지 번호 미리 증가
+    if (hasMore.value) {
+      pageNumber.value++;
     }
-  }
-}
 
+    console.log(`✅ 결과: 현재 ${issues.value.length}개 / 전체 ${total}개 (다음 페이지: ${pageNumber.value})`);
+
+  } catch (err) {
+    console.error("데이터 로드 실패:", err);
+  } finally {
+    // 서버 부하와 중복 요청을 막기 위해 약간의 딜레이 후 로딩 해제
+    setTimeout(() => {
+      isLoading.value = false;
+    }, 300);
+  }
+};
+
+// --- 스크롤 이벤트 ---
+const handleScroll = () => {
+  if (isLoading.value || !hasMore.value) return;
+
+  const { scrollHeight, scrollTop, clientHeight } = document.documentElement;
+  // 바닥에서 100px 정도 여유 있을 때 호출
+  if (Math.ceil(scrollTop + clientHeight) >= scrollHeight - 100) {
+    fetchIssues();
+  }
+};
+
+// --- 기타 기능 함수들 ---
 const onSearch = () => fetchIssues(true);
-const changeStatus = (status) => { activeStatus.value = status; };
+const onStationChange = () => fetchIssues(true);
+const changeStatus = (status) => { 
+  if (activeStatus.value === status) return;
+  activeStatus.value = status; 
+  fetchIssues(true);
+};
+
+const resetFilter = () => {
+  searchKeyword.value = ''; filterSeverity.value = ''; filterLine.value = '';
+  filterStation.value = ''; filterSort.value = '';
+  fetchIssues(true);
+};
+
+const onBulkStationSelected = async (stationData) => {
+  if (!stationData || selectedIds.value.length === 0) return;
+  if (confirm(`${selectedIds.value.length}개의 위치를 변경하시겠습니까?`)) {
+    try {
+      await axios.post('http://localhost:9000/update_incident_statusBatch', {
+        incident_id: selectedIds.value,
+        updateType: 'location',
+        updateValue: stationData.station_name,
+        lineName: stationData.line_name,
+        station_id: stationData.station_id
+      });
+      alert('변경되었습니다.');
+      clearSelection();
+      fetchIssues(true);
+    } catch (err) { alert('오류 발생'); }
+  }
+};
+
+const handleBulkUpdate = async (type, value) => {
+  if (selectedIds.value.length === 0 || !value) return;
+  if (confirm(`일괄 변경하시겠습니까?`)) {
+    try {
+      await axios.post('http://localhost:9000/update_incident_statusBatch', {
+        incident_id: selectedIds.value, updateType: type, updateValue: value,
+        status: (type === 'status' && value === '3') ? '3' : undefined
+      });
+      alert('변경되었습니다.');
+      clearSelection();
+      fetchIssues(true);
+    } catch (err) { alert('오류 발생'); }
+  }
+};
+
+const toggleBulkMenu = (type) => activeBulkMenu.value = activeBulkMenu.value === type ? null : type;
+const clearSelection = () => { selectedIds.value = []; activeBulkMenu.value = null; };
+const toggleSelectAll = () => selectedIds.value = isAllSelected.value ? [] : issues.value.map(i => i.incident_id);
+const getStatusConfig = (status) => {
+  const configs = { '1': { label: '대기', color: '#9e9e9e' }, '2': { label: '해결중', color: '#0e6ca5' }, '3': { label: '완료', color: '#17f000' }, '4': { label: '삭제', color: '#EEEEEE' } }
+  return configs[status] || { label: status, color: '#333' }
+};
+
 const goToCreatePage = () => emit('change-view', 'Createinsident');
 const goToDetail = (id) => emit('change-view', 'IssueDetail', id);
+const handleClickOutside = (e) => { if (!e.target.closest('.bulk-menu-item')) activeBulkMenu.value = null; };
 
-watch(activeStatus, () => fetchIssues(true));
-watch(filterLine, (newLine) => { 
-  if (filterStation.value) {
-    const exists = allStations.value.some(st => st.station_name === filterStation.value && st.line_name === newLine);
-    if (!exists) filterStation.value = '';
-  }
-  fetchIssues(true); 
+// --- Lifecycle & Watch ---
+watch(filterLine, () => {
+  filterStation.value = ''; // 호선 바뀌면 역 초기화
+  fetchIssues(true);
 });
 
 onMounted(async () => {
-  window.addEventListener('mousedown', handleClickOutside)
+  window.addEventListener('mousedown', handleClickOutside);
   window.addEventListener('scroll', handleScroll);
-  const res = await axios.get('http://localhost:9000/get_allstations');
-  allStations.value = res.data;
-  fetchIssues(true);
+  
+  try {
+    const res = await axios.get('http://localhost:9000/get_allstations');
+    allStations.value = res.data;
+  } catch (err) {
+    console.error("초기 데이터 로드 실패:", err);
+  }
+  
+  fetchIssues(true); // 첫 페이지 로드
 });
 
 onUnmounted(() => {
@@ -384,7 +353,6 @@ onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll);
 });
 </script>
-
 <style scoped>
 .issue-container { max-width: 95%; margin: 20px auto; font-family: 'Pretendard', sans-serif; }
 .header-section { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
