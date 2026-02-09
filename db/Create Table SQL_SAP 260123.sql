@@ -123,7 +123,7 @@ insert into storage.weather
 (tm, wd, ws, ta, hm, rn)
 values('202602051800', 108.0, 25.0, 4.4, -9.0, -9.0)
 
--- delete from storage.weather where tm = '202602061200';
+-- delete from storage.weather where wd = 108;
 -- select * from storage.user;
 -- select * from storage.incident_comment;
 

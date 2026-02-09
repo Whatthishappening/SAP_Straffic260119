@@ -2,50 +2,87 @@
 
 구글 드라이버 : https://drive.google.com/drive/folders/1DLYen7Q9-ZSXGzDScXDsAwbRymENAAs3
 
-<img src="./doc/설계서/이미지/로고.png" width="400px" alt="logo image">
+<img src="./doc/설계서/이미지/로고.png" width="200px" alt="logo image">
 스마트 지하철 운영 대시보드 (운영자용 그룹웨어)
 
--PM
+---
+
+## 📌 프로젝트 소개
+
+- 프로젝트 목적 : 지하철 담당자가 그룹웨어를 보고 한눈에 편의시설 현황 및 장애/이슈를 알 수 있게 만든 그룹웨어
+
+개발 기간 : 26.01.19 ~ 26.02.26
+
+참여 인원 : 배영환 / 김소연 / 송원호 / 오창석
+
+담당 역할
+-배영환(PM)
 
 일정/리스크 관리
-요구사항 관리
 DB 설계
+api 개발
 
--설계자 / 발표
+
+-김소연(설계자 / 발표)
 서비스 시나리오
 화면/UI 설계
 발표 스토리 구성
 
-개발자 A
-화면 개발
+-송원호(개발자)
+로그인 / 회원가입 / 대쉬보드 / 역별현황
 
-개발자 B
-화면 개발
+-오창석(개발자)
+공용화면 / 마이페이지 / 장애이슈 / 사용자관리
 
+---
 
-🧭 1. 공통 레이아웃
+## 🛠 기술 스택
+### Backend
+- Java 17
+- Spring Boot
+- JPA / MyBatis
+- PostgreSQL
 
-🔹 Top Header
+### Frontend
+- Vue.js
+- Vue Router
+- Axios
+- Chart.js
 
-항상 고정
+### DevOps / Tool
+- GitHub
+- Postgre
+- SourceTree
+- VSCode
+- Postman
 
-구성 요소
+<img src="./doc/개발스택.png" width="600px" alt="개발스택">
 
-시스템 로고 / 이름
+---
+### ✨ 주요 기능
 
-→ Smart Subway Operation Dashboard
+✅ 실시간 노선 운영 현황
 
-실시간 상태 표시
+✅ 장애 / 이슈 관리
 
-🟢 API 연결 정상
+✅ 통계 분석 대시보드
 
-🔴 오류 발생
+✅ 사용자 관리
 
-알림 아이콘 🔔
+✅ 권한 관리
 
-사용자 프로필 (관리자 / 운영자)
+---
+### 🔑 환경 설정
+npm:
+    npm install
 
-​
+application.properties
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:5432/postgres
+    username: postgres
+    password: 1234
+
 
 👉 PM 포인트
 
