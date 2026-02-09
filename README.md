@@ -2,7 +2,7 @@
 
 구글 드라이버 : https://drive.google.com/drive/folders/1DLYen7Q9-ZSXGzDScXDsAwbRymENAAs3
 
-<img src="./doc/설계서/이미지/로고 그림(B).png" width="500px" alt="logo image">
+<img src="./doc/설계서/이미지/로고 그림(B).png" width="300px" alt="logo image">
 스마트 지하철 운영 대시보드 (운영자용 그룹웨어)
 
 ---
@@ -61,15 +61,17 @@ api 개발
 ---
 ### ✨ 주요 기능
 
-✅ 실시간 노선 운영 현황
+✅ 대시보드
 
 ✅ 장애 / 이슈 관리
 
-✅ 통계 분석 대시보드
-
 ✅ 사용자 관리
 
-✅ 권한 관리
+✅ 역별현황
+
+✅ 마이페이지
+
+✅ 실시간 노선 운영 현황(고도화)
 
 ---
 ### 🔑 환경 설정
