@@ -86,12 +86,18 @@
 ---
 ### 🔑 환경 설정
 npm:
+   
     npm install
 
 application.properties
+
 spring:
+  
   datasource:
+    
     url: jdbc:postgres://localhost:5432/postgres
+    
     username: postgres
+   
     password: 1234
 
