@@ -313,7 +313,10 @@ const onStationChange = () => {
 
 const fetchIssues = async (isNewSearch = false) => {
   if (isLoading.value) return;
-  if (isNewSearch) { pageNumber.value = 0; hasMore.value = true; selectedIds.value = []; }
+if (isNewSearch) {
+    pageNumber.value = 0;
+    hasMore.value = true;
+  }
   if (!hasMore.value) return;
 
   isLoading.value = true;
@@ -333,10 +336,13 @@ const fetchIssues = async (isNewSearch = false) => {
   try {
     const resp = await axios.post('http://localhost:9000/get_incidentlist', sendData);
     const newItems = resp.data.incidentList || [];
-    if (pageNumber.value === 0) issues.value = newItems;
-    else issues.value = [...issues.value, ...newItems];
+    if (pageNumber.value === 0) {
+   issues.value = newItems; 
+    } else {
+      issues.value = [...issues.value, ...newItems];
+    }
     totalCount.value = resp.data.cnt;
-    if (newItems.length < 10) hasMore.value = false;
+  if (newItems.length < 10) hasMore.value = false;
   } catch (err) { console.error("데이터 로드 실패:", err); }
   finally { isLoading.value = false; }
 }
