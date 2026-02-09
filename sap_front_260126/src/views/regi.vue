@@ -38,12 +38,15 @@
       </div>
 
       <div class="input-box">
-        <input v-model="add_pw" type="password" placeholder="비밀번호" />
+        <input v-model="add_pw" type="password" placeholder="비밀번호" />     
       </div>
+    
       <div class="input-box">
         <input v-model="check_pw" type="password" placeholder="비밀번호 확인" />
       </div>
-
+   <p class="pw-guide">
+      * 8~16자 이내, 영문/숫자/특수문자 조합 (ID와 동일 불가)
+    </p>
       <div class="section-title">역 선택</div>
       <SubwaySelector @update-selection="handleSubwayChange" />
 
@@ -164,16 +167,29 @@ export default {
         }
       }
 
-      if (this.add_pw !== this.check_pw) {
-        alert("비밀번호가 일치하지 않습니다.");
-        this.add_pw = '';
-        this.check_pw = '';
-        return;
-      }
-
+ // 3. 비밀번호 유효성 검사 (this 키워드 수정)
+    if (this.add_pw !== this.check_pw) {
+      alert("비밀번호가 일치하지 않습니다.");
+      return;
+    }
+    if (this.add_pw.length < 8 || this.add_pw.length > 16) {
+      alert("비밀번호는 8자 이상 16자 이하로 설정해주세요.");
+      return;
+    }
+    if (this.add_pw === this.add_id) {
+      alert("아이디와 동일한 비밀번호는 사용할 수 없습니다.");
+      return;
+    }
+    
+    // 영문, 숫자, 특수문자 조합 정규식
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/;
+    if (!passwordRegex.test(this.add_pw)) {
+      alert("비밀번호는 영문, 숫자, 특수문자를 포함해야 합니다.");
+      return;
+    }
       const cleanName = this.add_name.replace(/\s/g, '');
       const cleanId = this.add_id.replace(/\s/g, '');
-
+        
       let param = { params: {
         user_name: cleanName,
         user_id: cleanId,
@@ -209,6 +225,12 @@ export default {
 .check-btn { 
   font-size: 11px; border: none; background: #dfe6ff; border-radius: 6px; padding: 0 10px; 
   cursor: pointer; color: #3b5bff; font-weight: 700; white-space: nowrap; height: 28px; margin-left: 8px;
+}
+.pw-guide {
+  font-size: 12px;
+  color: #e74c3c;
+  margin: 0;
+  padding-left: 2px;
 }
 
 .email-row { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
