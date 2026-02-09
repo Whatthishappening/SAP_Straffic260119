@@ -9,7 +9,7 @@
 
 ## 📌 프로젝트 소개
 
-- 프로젝트 목적 : 지하철 담당자가 그룹웨어를 보고 한눈에 편의시설 현황 및 장애/이슈를 알 수 있게 만든 그룹웨어
+프로젝트 목적 : 지하철 담당자가 그룹웨어를 보고 한눈에 편의시설 현황 및 장애/이슈를 알 수 있게 만든 그룹웨어
 
 개발 기간 : 26.01.19 ~ 26.02.26
 
@@ -91,7 +91,7 @@ npm:
 application.properties
 spring:
   datasource:
-    url: jdbc:mysql://localhost:5432/postgres
+    url: jdbc:postgres://localhost:5432/postgres
     username: postgres
     password: 1234
 
