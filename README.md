@@ -101,3 +101,13 @@ spring:
    
     password: 1234
 
+---
+### 화면
+
+<img src="./doc/화면캡처/1. 로그인.png" width="500px" alt="로그인">
+<img src="./doc/화면캡처/2. 대시보드.png" width="500px" alt="대시보드">
+<img src="./doc/화면캡처/3. 마이페이지.png" width="500px" alt="마이페이지">
+<img src="./doc/화면캡처/4. 역별현황.png" width="500px" alt="역별현황">
+<img src="./doc/화면캡처/5. 통계분석.png" width="500px" alt="통계분석">
+<img src="./doc/화면캡처/6. 장애이슈.png" width="500px" alt="장애이슈">
+<img src="./doc/화면캡처/7. 사용자관리.png" width="500px" alt="사용자관리">
