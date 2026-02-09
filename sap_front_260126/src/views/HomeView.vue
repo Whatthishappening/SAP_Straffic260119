@@ -116,7 +116,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'; // onUnmounted 추가
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import axios from 'axios';
 import Chart from 'chart.js/auto';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
@@ -131,9 +131,8 @@ const seoulWeather = ref({ tm: '', wd: 0, ws: 0, ta: 0, hm: 0, rn: 0 });
 let lockerChart = null;
 let hourlyChart = null;
 let weeklyChartInstance = null;
-let refreshTimer = null; // 타이머 변수
+let refreshTimer = null;
 
-// 데이터를 가져오고 화면을 그리는 핵심 함수
 const fetchData = async () => {
   try {
     const loginData = sessionStorage.getItem("login") || sessionStorage.getItem("user_info");
@@ -147,40 +146,34 @@ const fetchData = async () => {
     });
 
     if (res.data) {
-      // 1. 데이터 할당 (이때 날씨, 이슈 건수 등 모든 텍스트/숫자가 바뀜)
       dashboardData.value = res.data;
       seoulWeather.value = {
-        tm: res.data.weather_tm || '', 
-        ta: res.data.weather_ta || 0, 
-        ws: res.data.weather_ws || 0,
-        hm: res.data.weather_hm || 0, 
-        rn: res.data.weather_rn || 0, 
-        wd: res.data.weather_wd || 0
+        tm: res.data.weather_tm || '', ta: res.data.weather_ta || 0, 
+        ws: res.data.weather_ws || 0, hm: res.data.weather_hm || 0, 
+        rn: res.data.weather_rn || 0, wd: res.data.weather_wd || 0
       };
-
+      
       if (userAuth.value === '2') {
-        userLine.value = String(res.data.station_id || user.station_id).charAt(0);
+        /* [보강] station_id에서 'P' 등 문자를 제거하고 첫 번째 숫자만 추출 */
+        const rawId = String(res.data.station_id || user.station_id);
+        userLine.value = rawId.replace(/[^0-9]/g, '').charAt(0);
       }
-
-      // 2. 차트 초기화 및 재생성
+      
       await nextTick();
       initCharts();
     }
-  } catch (err) { 
-    console.error("30초 주기 데이터 갱신 실패:", err); 
-  }
+  } catch (err) { console.error("데이터 갱신 실패:", err); }
 };
 
-// 차트 생성 로직 (기존 차트 삭제 후 재생성)
 const initCharts = () => {
-  if (lockerChart) { lockerChart.destroy(); lockerChart = null; }
-  if (hourlyChart) { hourlyChart.destroy(); hourlyChart = null; }
-  if (weeklyChartInstance) { weeklyChartInstance.destroy(); weeklyChartInstance = null; }
+  if (lockerChart) lockerChart.destroy();
+  if (hourlyChart) hourlyChart.destroy();
+  if (weeklyChartInstance) weeklyChartInstance.destroy();
 
   const data = dashboardData.value;
   if (!data) return;
 
-  // 1. 물품보관함 도넛
+  // 1. 보관함 도넛
   const ctxUsed = document.getElementById('usedStorageChart')?.getContext('2d');
   if (ctxUsed) {
     const t = Number(data.total_lockers || 0);
@@ -192,59 +185,70 @@ const initCharts = () => {
     });
   }
 
-  // 2. 실시간 이용률 (정수 표기)
+  // 2. 이용률 라인
   const ctxHourly = document.getElementById('hourlyChart')?.getContext('2d');
   if (ctxHourly) {
     const labels = ['08시', '11시', '14시', '17시', '20시', '23시'];
     const rawRate = Number(data.hour_usedlocker || 0);
     const fallback = [rawRate * 0.8, rawRate * 0.9, rawRate, rawRate * 1.1, rawRate * 1.05, rawRate];
-    const datasets = [];
-
-    if (userAuth.value === '1') {
-      datasets.push({ label: '전체 이용률', data: fallback, borderColor: '#36A2EB', backgroundColor: 'rgba(54, 162, 235, 0.2)', fill: true, tension: 0.4 });
-    } else {
-      datasets.push({ label: `${userLine.value}호선 이용률`, data: fallback, borderColor: getLineColor(userLine.value), backgroundColor: getLineColor(userLine.value) + '33', fill: true, tension: 0.4 });
-      datasets.push({ label: '본인 역 이용률', data: fallback.map(v => v * 0.9), borderColor: '#FF6384', borderWidth: 3, fill: false, tension: 0.4 });
-    }
     hourlyChart = new Chart(ctxHourly, { 
-      type: 'line', data: { labels, datasets }, plugins: [ChartDataLabels],
-      options: { 
-        responsive: true, maintainAspectRatio: false, 
-        scales: { y: { beginAtZero: true, max: 100 } },
-        plugins: { datalabels: { align: 'top', formatter: (v) => Math.round(v) + '%' } } 
-      } 
+      type: 'line', 
+      data: { labels, datasets: [{ label: '이용률', data: fallback, borderColor: '#36A2EB', backgroundColor: 'rgba(54, 162, 235, 0.2)', fill: true, tension: 0.4 }] }, 
+      plugins: [ChartDataLabels],
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { datalabels: { align: 'top', formatter: (v) => Math.round(v) + '%' } } } 
     });
   }
 
-  // 3. 장애발생 현황
+  // 3. 주간 장애 (막대+선 모두 표시)
   const ctxWeekly = document.getElementById('weeklyChart')?.getContext('2d');
   const weeklyData = data.weekly_issue || [];
   if (ctxWeekly) {
     hasWeeklyData.value = true;
     const labels = [];
+    const matchKeys = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(); d.setDate(d.getDate() - i);
-      labels.push(`${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      labels.push(`${mm}/${dd}`);
+      matchKeys.push(`${yyyy}-${mm}-${dd}`);
     }
 
     const datasets = [];
     if (userAuth.value === '1') {
-      datasets.push({ type: 'bar', label: '전체 장애건수', backgroundColor: '#E0E0E0', order: 2, data: labels.map(l => weeklyData.filter(d => d.day.includes(l.replace('/','-'))).reduce((a, c) => a + Number(c.count || 0), 0)) });
+      datasets.push({
+        type: 'bar', label: '전체 합계', backgroundColor: '#E0E0E0', order: 2,
+        data: matchKeys.map(k => weeklyData.filter(d => (d.day || d.event_date || "").includes(k)).reduce((a, c) => a + Number(c.count || 0), 0))
+      });
       ['1','2','3','4','5','6','7','8','9'].forEach(ln => {
-        datasets.push({ type: 'line', label: `${ln}호선`, borderColor: getLineColor(ln), tension: 0.3, order: 1, data: labels.map(l => weeklyData.filter(d => d.day.includes(l.replace('/','-')) && String(d.line_num) === ln).reduce((a, c) => a + Number(c.count || 0), 0)) });
+        datasets.push({
+          type: 'line', label: `${ln}호선`, borderColor: getLineColor(ln), tension: 0.3, order: 1, borderWidth: 2,
+          data: matchKeys.map(k => weeklyData.filter(d => (d.day || d.event_date || "").includes(k) && String(d.line_num || d.line_name).includes(ln)).reduce((a, c) => a + Number(c.count || 0), 0))
+        });
       });
     } else {
-      datasets.push({ type: 'bar', label: `${userLine.value}호선 전체`, backgroundColor: getLineColor(userLine.value) + '80', order: 2, data: labels.map(l => weeklyData.filter(d => d.day.includes(l.replace('/','-')) && String(d.line_num) === userLine.value).reduce((a, c) => a + Number(c.count || 0), 0)) });
-      datasets.push({ type: 'line', label: '본인 역 장애', borderColor: '#FF6384', borderWidth: 4, tension: 0.3, order: 1, data: labels.map(l => {
-          const found = weeklyData.find(d => d.day.includes(l.replace('/','-')) && String(d.station_id) === String(data.station_id));
+      datasets.push({
+        type: 'bar', label: `${userLine.value}호선 전체`, backgroundColor: getLineColor(userLine.value) + '80', order: 2,
+        data: matchKeys.map(k => weeklyData.filter(d => (d.day || d.event_date || "").includes(k) && String(d.line_num || d.line_name).includes(userLine.value)).reduce((a, c) => a + Number(c.count || 0), 0))
+      });
+      datasets.push({
+        type: 'line', label: '본인 역', borderColor: '#FF6384', borderWidth: 4, tension: 0.3, order: 1,
+        data: matchKeys.map(k => {
+          const found = weeklyData.find(d => (d.day || d.event_date || "").includes(k) && String(d.station_id) === String(data.station_id));
           return found ? Number(found.count) : 0;
-      })});
+        })
+      });
     }
-    weeklyChartInstance = new Chart(ctxWeekly, { data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } } });
+
+    weeklyChartInstance = new Chart(ctxWeekly, {
+      data: { labels, datasets },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: true } } }
+    });
   }
 };
 
-const getLineColor = (ln) => ({ '1': '#0052A4', '2': '#00A84D', '3': '#EF7C1C', '4': '#00A4E3', '5': '#996CAC', '6': '#CD7C2F', '7': '#747F00', '8': '#E6186C', '9': '#BB8336' }[ln] || '#333');
+const getLineColor = (ln) => ({ '1': '#0052A4', '2': '#00A84D', '3': '#EF7C1C', '4': '#00A4E3', '5': '#996CAC', '6': '#CD7C2F', '7': '#747F00', '8': '#E6186C', '9': '#BB8336' }[ln] || '#888');
 const linetitle = computed(() => dashboardData.value?.linetitle || '운영 현황');
 const linetotal = computed(() => Number(dashboardData.value?.linetotal || 0));
 const stationtotal = computed(() => Number(dashboardData.value?.stationtotal || 0));
@@ -253,7 +257,12 @@ const total_lockers = computed(() => Number(dashboardData.value?.total_lockers |
 const used_lockers = computed(() => Number(dashboardData.value?.used_lockers || 0));
 const incident_count = computed(() => Number(dashboardData.value?.incident_count || 0));
 
-const windDirText = computed(() => ['북','북동','동','남동','남','남서','서','북서','북'][Math.round(seoulWeather.value.wd / 45) % 8] + '풍');
+const windDirText = computed(() => {
+  const wd = Number(seoulWeather.value.wd);
+  if (!wd || wd <= 0) return '무풍';
+  const directions = ['북', '북동', '동', '남동', '남', '남서', '서', '북서', '북'];
+  return directions[Math.round(wd / 4.5) % 8] + '풍';
+});
 const feelsLikeTemp = computed(() => {
   const t = seoulWeather.value.ta, v = seoulWeather.value.ws;
   return v < 0.5 ? t.toFixed(1) : (13.12 + (0.6215 * t) - (11.37 * Math.pow(v, 0.16)) + (0.3965 * t * Math.pow(v, 0.16))).toFixed(1);
@@ -270,15 +279,8 @@ const goBackToList = () => emit('go-list');
 const goTrainInfo = () => window.open("https://smss.seoulmetro.co.kr/traininfo/traininfoUserView.do", '_blank');
 const goWeatherDetail = () => window.open("https://weather.naver.com/map/", '_blank');
 
-// 생명주기 관리
-onMounted(() => {
-  fetchData(); // 최초 로드
-  refreshTimer = setInterval(fetchData, 15000); // 30초마다 무조건 실행
-});
-
-onUnmounted(() => {
-  if (refreshTimer) clearInterval(refreshTimer); // 페이지 이탈 시 종료
-});
+onMounted(() => { fetchData(); refreshTimer = setInterval(fetchData, 30000); });
+onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer); });
 </script>
 
 <style scoped>
