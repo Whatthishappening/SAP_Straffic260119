@@ -2,7 +2,7 @@
 
 구글 드라이버 : https://drive.google.com/drive/folders/1DLYen7Q9-ZSXGzDScXDsAwbRymENAAs3
 
-<img src="./doc/설계서/이미지/로고.png" width="200px" alt="logo image">
+<img src="./doc/설계서/이미지/로고 그림(B).png" width="500px" alt="logo image">
 스마트 지하철 운영 대시보드 (운영자용 그룹웨어)
 
 ---
@@ -83,21 +83,3 @@ spring:
     username: postgres
     password: 1234
 
-
-👉 PM 포인트
-
-“실시간 시스템이라는 인상을 줌”
-
-🔹 Left Sidebar (메인 메뉴)
-
-🏠 대시보드
-🚇 역별 현황
-📊 통계 분석
-⚠ 장애/이슈 관리
-⚙ 설정
-
-✔ 아이콘 + 텍스트
-
-✔ 메뉴 6~7개 넘기지 말기 (실무 감성)
-
-“이 프로젝트는 실제 지하철 운영자가 하루를 시작할 때 가장 먼저 보는 화면을 목표로 설계했습니다.”
