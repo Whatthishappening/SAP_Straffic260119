@@ -270,7 +270,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  min-width: 1400px; 
+  min-width: 1600px; 
   width: 100%;
 }
 
@@ -281,7 +281,7 @@ body {
 }
 .header, .footer {
   width: 100%;
-  min-width: 1400px;
+  min-width: 1600px;
 }
 /* 3. 헤더 */
 .header {
