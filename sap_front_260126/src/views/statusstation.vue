@@ -21,8 +21,8 @@
       <table class="status-table">
         <thead>
           <tr>
-            <th style="width: 120px;">역명</th>
-            <th style="width: 80px;">호선</th>
+            <th style="width: 100px;">호선</th>
+            <th style="width: 140px;">역명</th>
             <th v-if="isVisible('incident_count')">장애발생건수</th>
             <th v-if="isVisible('lockers')" style="min-width: 180px;">물품보관함 (실시간/설치/사용률)</th>
             <th v-if="isVisible('elevator')">엘리베이터</th>
@@ -41,12 +41,12 @@
             <td colspan="13" class="no-data">조회된 데이터가 없습니다. 역명 또는 호선을 선택해 주세요.</td>
           </tr>
           <tr v-for="item in displayList" :key="item.station_id + item.line_name">
-            <td class="bold">{{ item.station_name }}</td>
             <td class="line-cell">
               <span class="line-badge" :style="{ backgroundColor: getLineColor(item.line_name) }">
                 {{ item.line_name }}
               </span>
             </td>
+            <td class="bold">{{ item.station_name }}</td>
             <td v-if="isVisible('incident_count')" :class="{ 'text-danger': item.incident_count > 0 }">
               {{ item.incident_count }}개
             </td>
@@ -102,7 +102,6 @@ const getLineColor = (line) => {
 const formatStatus = (val) => (val === 'Y' || val === 'O' ? 'O' : 'X');
 const isVisible = (key) => selectedCategories.value.includes(key);
 
-// 사용률 계산 (한 줄 표현용)
 const calculateUsageRate = (used, total) => {
   if (!total || total === 0) return '0%';
   const rate = Math.floor((used / total) * 100);
@@ -115,37 +114,44 @@ const handleSearch = async (searchData) => {
     let allData = res.data;
     const searchKeyword = searchData.keyword || '';
 
+    let filteredData = [];
     if (searchData.type === 'station') {
-      displayList.value = allData.filter(s => s.station_id === searchData.station_id);
+      filteredData = allData.filter(s => s.station_id === searchData.station_id);
     } 
     else if (searchData.type === 'line') {
-      displayList.value = allData.filter(s => {
+      filteredData = allData.filter(s => {
         const matchLine = s.line_name === searchData.line_name;
         return searchKeyword ? (matchLine && s.station_name.includes(searchKeyword)) : matchLine;
       });
     } 
     else if (searchData.type === 'keyword') {
-      displayList.value = allData.filter(s => s.station_name.includes(searchKeyword));
+      filteredData = allData.filter(s => s.station_name.includes(searchKeyword));
     }
     else {
-      displayList.value = allData;
+      filteredData = allData;
     }
 
-    // [정렬] 역명 가나다순 -> 역명이 같으면 호선 숫자 순
-    displayList.value.sort((a, b) => {
-      const nameSort = a.station_name.localeCompare(b.station_name, 'ko');
-      if (nameSort !== 0) return nameSort;
-
+    // [정렬 로직 수정] 
+    // 1순위: 호선 숫자 순 (1호선 -> 2호선 ...)
+    // 2순위: 호선이 같으면 역명 가나다 순
+    filteredData.sort((a, b) => {
       const getLineNum = (str) => parseInt(str.replace(/[^0-9]/g, "")) || 999;
-      return getLineNum(a.line_name) - getLineNum(b.line_name);
+      const lineA = getLineNum(a.line_name);
+      const lineB = getLineNum(b.line_name);
+
+      if (lineA !== lineB) {
+        return lineA - lineB;
+      }
+      return a.station_name.localeCompare(b.station_name, 'ko');
     });
+
+    displayList.value = filteredData;
 
   } catch (err) { 
     console.error("데이터 로드 실패:", err); 
   }
 };
 </script>
-
 <style scoped>
 .status-container { padding: 20px; }
 .category-filter-card { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
