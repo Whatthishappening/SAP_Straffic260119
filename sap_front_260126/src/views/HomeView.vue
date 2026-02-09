@@ -152,9 +152,13 @@ const fetchData = async () => {
         ws: res.data.weather_ws || 0, hm: res.data.weather_hm || 0, 
         rn: res.data.weather_rn || 0, wd: res.data.weather_wd || 0
       };
+      
       if (userAuth.value === '2') {
-        userLine.value = String(res.data.station_id || user.station_id).charAt(0);
+        /* [보강] station_id에서 'P' 등 문자를 제거하고 첫 번째 숫자만 추출 */
+        const rawId = String(res.data.station_id || user.station_id);
+        userLine.value = rawId.replace(/[^0-9]/g, '').charAt(0);
       }
+      
       await nextTick();
       initCharts();
     }

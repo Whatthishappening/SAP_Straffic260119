@@ -22,90 +22,92 @@
    </resultMap>
 
  <select id="getdashboard" resultMap="DashboardResultMap">
-        SELECT 
-            /* 1. 제목 설정 */
-            <choose>
-                <when test='auth != null and auth.equals("1")'>
-                    '전 노선 운영현황' AS linetitle,
-                    NULL AS station_id
-                </when>
-                <otherwise>
-                    (SELECT l.station_name || ' 운영현황' 
-                     FROM storage.local l 
-                     WHERE l.station_id = (SELECT u.station_id FROM storage.user u WHERE u.user_id = #{user_id})
-                     LIMIT 1) AS linetitle,
-                    (SELECT station_id FROM storage.user WHERE user_id = #{user_id}) AS station_id
-                </otherwise>
-            </choose>,
+    SELECT 
+        /* 1. 제목 설정 */
+        <choose>
+            <when test='auth != null and auth.equals("1")'>
+                '전 노선 운영현황' AS linetitle,
+                NULL AS station_id
+            </when>
+            <otherwise>
+                (SELECT l.station_name || ' 운영현황' 
+                 FROM storage.local l 
+                 WHERE l.station_id = (SELECT u.station_id FROM storage.user u WHERE u.user_id = #{user_id})
+                 LIMIT 1) AS linetitle,
+                (SELECT station_id FROM storage.user WHERE user_id = #{user_id}) AS station_id
+            </otherwise>
+        </choose>,
 
-            /* 2. 전체 요약 정보 */
-            (SELECT COUNT(DISTINCT line_name) FROM storage.local_amenities) AS linetotal,
-            (SELECT COUNT(*) FROM storage.local_amenities) AS stationtotal,
-            
-            <choose>
-                <when test='auth != null and auth.equals("2")'>
-                    (SELECT COUNT(*) 
-                     FROM storage.local_amenities 
-                     WHERE SUBSTRING(station_id, 1, 1) = SUBSTRING((SELECT station_id FROM storage.user WHERE user_id = #{user_id}), 1, 1))
-                </when>
-                <otherwise>0</otherwise>
-            </choose> AS line_stationcount,
+        /* 2. 전체 요약 정보 */
+        (SELECT COUNT(DISTINCT line_name) FROM storage.local_amenities) AS linetotal,
+        (SELECT COUNT(*) FROM storage.local_amenities) AS stationtotal,
+        
+        <choose>
+            <when test='auth != null and auth.equals("2")'>
+                (SELECT COUNT(*) 
+                 FROM storage.local_amenities 
+                 /* [보강] P 등 문자를 제거하고 순수 숫자에서 첫 글자를 따와 노선 비교 */
+                 WHERE SUBSTRING(REGEXP_REPLACE(station_id, '[^0-9]', '', 'g'), 1, 1) = 
+                       SUBSTRING(REGEXP_REPLACE((SELECT station_id FROM storage.user WHERE user_id = #{user_id}), '[^0-9]', '', 'g'), 1, 1))
+            </when>
+            <otherwise>0</otherwise>
+        </choose> AS line_stationcount,
 
-            /* 3. 장애 건수 */
-            (SELECT COUNT(*) FROM storage.incident 
-             WHERE incident_status IN ('1', '2')
-             <if test='auth != null and auth.equals("2")'>
-                 AND incident_station_id = (SELECT station_id FROM storage.user WHERE user_id = #{user_id})
-             </if>
-            ) AS incident_count,
+        /* 3. 장애 건수 */
+        (SELECT COUNT(*) FROM storage.incident 
+         WHERE incident_status IN ('1', '2')
+         <if test='auth != null and auth.equals("2")'>
+             AND incident_station_id = (SELECT station_id FROM storage.user WHERE user_id = #{user_id})
+         </if>
+        ) AS incident_count,
 
-            /* 4. 총 물품보관함 개수 */
-            COALESCE((
-                SELECT SUM(li.local_small + li.local_middle + li.local_large)
-                FROM storage.locker_inventory li
-                JOIN storage.local l ON li.local_id = l.local_id
-                <where>
-                    <if test='auth != null and auth.equals("2")'>
-                        AND l.station_id = (SELECT station_id FROM storage.user WHERE user_id = #{user_id})
-                    </if>
-                </where>
-            ), 0) AS total_lockers,
+        /* 4. 총 물품보관함 개수 */
+        COALESCE((
+            SELECT SUM(li.local_small + li.local_middle + li.local_large)
+            FROM storage.locker_inventory li
+            JOIN storage.local l ON li.local_id = l.local_id
+            <where>
+                <if test='auth != null and auth.equals("2")'>
+                    AND l.station_id = (SELECT station_id FROM storage.user WHERE user_id = #{user_id})
+                </if>
+            </where>
+        ), 0) AS total_lockers,
 
-            /* 5. 사용 중인 물품보관함 개수 */
-            COALESCE((
-                SELECT SUM((li.local_small + li.local_middle + li.local_large) - 
-                           (lu.able_small + lu.able_middle + lu.able_large))
-                FROM storage.locker_inventory li
-                LEFT JOIN (
-                    SELECT DISTINCT ON (local_id) * FROM storage.locker_usage 
-                    ORDER BY local_id, observed_at DESC
-                ) lu ON li.local_id = lu.local_id
-                JOIN storage.local l ON li.local_id = l.local_id
-                <where>
-                    <if test='auth != null and auth.equals("2")'>
-                        AND l.station_id = (SELECT station_id FROM storage.user WHERE user_id = #{user_id})
-                    </if>
-                </where>
-            ), 0) AS used_lockers,
+        /* 5. 사용 중인 물품보관함 개수 */
+        COALESCE((
+            SELECT SUM((li.local_small + li.local_middle + li.local_large) - 
+                       (lu.able_small + lu.able_middle + lu.able_large))
+            FROM storage.locker_inventory li
+            LEFT JOIN (
+                SELECT DISTINCT ON (local_id) * FROM storage.locker_usage 
+                ORDER BY local_id, observed_at DESC
+            ) lu ON li.local_id = lu.local_id
+            JOIN storage.local l ON li.local_id = l.local_id
+            <where>
+                <if test='auth != null and auth.equals("2")'>
+                    AND l.station_id = (SELECT station_id FROM storage.user WHERE user_id = #{user_id})
+                </if>
+            </where>
+        ), 0) AS used_lockers,
 
-            /* 6. 시간대별 사용률(평균) */
-            COALESCE((
-                SELECT ROUND(AVG(((li.local_small + li.local_middle + li.local_large) - 
-                                  (lu.able_small + lu.able_middle + lu.able_large))::numeric / 
-                                 NULLIF((li.local_small + li.local_middle + li.local_large), 0) * 100), 1)
-                FROM storage.locker_inventory li
-                JOIN (
-                    SELECT DISTINCT ON (local_id) * FROM storage.locker_usage 
-                    ORDER BY local_id, observed_at DESC
-                ) lu ON li.local_id = lu.local_id
-                JOIN storage.local l ON li.local_id = l.local_id
-                <where>
-                    <if test='auth != null and auth.equals("2")'>
-                        AND l.station_id = (SELECT station_id FROM storage.user WHERE user_id = #{user_id})
-                    </if>
-                </where>
-            ), 0) AS hour_usedlocker
-    </select>
+        /* 6. 시간대별 사용률(평균) */
+        COALESCE((
+            SELECT ROUND(AVG(((li.local_small + li.local_middle + li.local_large) - 
+                              (lu.able_small + lu.able_middle + lu.able_large))::numeric / 
+                             NULLIF((li.local_small + li.local_middle + li.local_large), 0) * 100), 1)
+            FROM storage.locker_inventory li
+            JOIN (
+                SELECT DISTINCT ON (local_id) * FROM storage.locker_usage 
+                ORDER BY local_id, observed_at DESC
+            ) lu ON li.local_id = lu.local_id
+            JOIN storage.local l ON li.local_id = l.local_id
+            <where>
+                <if test='auth != null and auth.equals("2")'>
+                    AND l.station_id = (SELECT station_id FROM storage.user WHERE user_id = #{user_id})
+                </if>
+            </where>
+        ), 0) AS hour_usedlocker
+</select>
     
     
     <select id="getWeather" resultMap="DashboardResultMap">
