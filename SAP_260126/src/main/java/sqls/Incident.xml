@@ -28,7 +28,9 @@
             <if test="status == 'resolved'">
                 AND incident_status IN ('3', '4')
             </if>
-            
+            <if test="detail_status != null and detail_status != ''">
+            AND incident_status = #{detail_status}
+        	</if>
             <if test="keyword != null and keyword != ''">
                 <choose>
                     <when test="category == 'title'">

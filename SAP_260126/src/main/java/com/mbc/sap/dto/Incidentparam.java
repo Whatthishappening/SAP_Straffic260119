@@ -10,6 +10,13 @@ public class Incidentparam {
    private String line_name;
    private String station_name;
    private String sortOrder;
+   private String detail_status;
+   public String getDetail_status() {
+	return detail_status;
+}
+   public void setDetail_status(String detail_status) {
+	this.detail_status = detail_status;
+   }
    public String getSeverity() {
 	return severity;
 }
