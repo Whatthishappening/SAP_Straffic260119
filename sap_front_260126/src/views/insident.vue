@@ -17,7 +17,9 @@
         />
       </div>
 
-      <button class="search-icon-btn" @click="onSearch"><img src="@/assets/검색돋보기(B).png" alt="search" style="width: 20px; height: 20px; vertical-align: middle;"></button>
+      <button class="search-icon-btn" @click="onSearch">
+        <img src="@/assets/검색돋보기(B).png" alt="search" style="width: 20px; height: 20px; vertical-align: middle;">
+      </button>
       <button class="create-btn" @click="goToCreatePage">Create</button>
     </div>
 
@@ -73,28 +75,39 @@
 
           <button class="cancel-bulk" @click="clearSelection">Cancel</button>
         </template>
-
+        
         <template v-else>
+          <select v-model="filterstatus" @change="fetchIssues(true)">
+            <option value="">상태 전체</option>
+            <option v-for="opt in filteredSearchStatusOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
+
           <select v-model="filterSeverity" @change="fetchIssues(true)">
             <option value="">심각도 전체</option>
             <option value="Critical">Critical</option>
             <option value="Major">Major</option>
             <option value="Minor">Minor</option>
           </select>
+
           <select v-model="filterLine" @change="fetchIssues(true)">
             <option value="">호선 전체</option>
             <option v-for="line in lineOptions" :key="line" :value="line">{{ line }}</option>
           </select>
+
           <select v-model="filterStation" @change="onStationChange">
             <option value="">역 전체</option>
             <option v-for="st in stationsInFilterLine" :key="st.station_id" :value="st.station_name">{{ st.station_name }}</option>
           </select>
+
           <select v-model="filterSort" @change="fetchIssues(true)">
-             <option value="">정렬</option>
+            <option value="">정렬</option>
             <option value="desc">Newest</option>
             <option value="asc">Oldest</option>
           </select>
-         <button type="button" class="reset-btn" @click="resetFilter">정렬리셋</button>
+
+          <button v-if="activeStatus === 'close'" type="button" class="reset-btn" @click="resetFilter">정렬리셋</button>
         </template>
       </div>
     </div>
@@ -120,26 +133,28 @@
               <span v-if="issue.incident_station_name" class="badge station">{{ issue.incident_station_name }}</span>
             </div>
           </div>
-       <div class="issue-sub-row">
-  <span class="reporter-info"># by {{ issue.user_name }}</span>
-  <span class="date-info">
-    reported {{ formatDate(issue.create_at) }}
-    <template v-if="issue.complete_at">
-      <span class="complete-separator"> | </span>
-      <span class="completed-text">✅ completed {{ formatDate(issue.complete_at) }}</span>
-    </template>
-  </span>
-</div>
+          <div class="issue-sub-row">
+            <span class="reporter-info"># by {{ issue.user_name }}</span>
+            <span class="date-info">
+              reported {{ formatDate(issue.create_at) }}
+              <template v-if="issue.complete_at">
+                <span class="complete-separator"> | </span>
+                <span class="completed-text">✅ completed {{ formatDate(issue.complete_at) }}</span>
+              </template>
+            </span>
+          </div>
         </div>
         <div class="comment-count" v-if="issue.comment_cnt > 0">
-          <span class="comment-icon"><img src="@/assets/말풍선.png" alt="search" style="width: 20px; height: 20px; vertical-align: middle;"></span><span class="count-num">{{ issue.comment_cnt }}</span>
+          <span class="comment-icon"><img src="@/assets/말풍선.png" alt="comment" style="width: 20px; height: 20px; vertical-align: middle;"></span>
+          <span class="count-num">{{ issue.comment_cnt }}</span>
         </div>
       </li>
     </ul>
   
-  <div v-if="isLoading" class="loading-trigger">불러오는 중...</div>
+    <div v-if="isLoading" class="loading-trigger">불러오는 중...</div>
     <div v-if="!hasMore && issues.length > 0" class="end-trigger">마지막 데이터입니다.</div>
-  </div> </template>
+  </div>
+</template>
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
@@ -161,7 +176,7 @@ const formatDate = (dateStr) => {
 // --- 상태 관리 ---
 const activeBulkMenu = ref(null); 
 const statusMap = { '1': '대기', '2': '해결중', '3': '완료', '4': '삭제' };
-
+const filterstatus = ref('')
 const filterSeverity = ref('')
 const filterLine = ref('')
 const filterStation = ref('')
@@ -186,6 +201,21 @@ const indicatorStyle = computed(() => {
   return { left: isOpen ? '0px' : '82px', width: isOpen ? '68px' : '72px', backgroundColor: isOpen ? '#2ecc71' : '#e74c3c' }
 })
 
+// ✅ 추가: 탭에 따라 검색 필터 옵션을 다르게 구성
+const filteredSearchStatusOptions = computed(() => {
+  if (activeStatus.value === 'open') {
+    return [
+      { value: '1', label: '대기' },
+      { value: '2', label: '해결중' }
+    ];
+  } else {
+    return [
+      { value: '3', label: '완료' },
+      { value: '4', label: '삭제' }
+    ];
+  }
+});
+
 const stationsInFilterLine = computed(() => {
   let list = !filterLine.value ? allStations.value : allStations.value.filter(st => st.line_name === filterLine.value);
   const seen = new Set();
@@ -196,13 +226,11 @@ const stationsInFilterLine = computed(() => {
   }).sort((a, b) => a.station_name.localeCompare(b.station_name, 'ko'));
 });
 
-// --- API 로직 (핵심) ---
+// --- API 로직 ---
 const fetchIssues = async (isNewSearch = false) => {
-  // 1. 중복 호출 방지 및 종료 조건 체크
   if (isLoading.value) return;
   if (!isNewSearch && !hasMore.value) return;
 
-  // 2. 초기화 (새로운 검색이나 탭 변경 시)
   if (isNewSearch) {
     pageNumber.value = 0;
     hasMore.value = true;
@@ -210,13 +238,13 @@ const fetchIssues = async (isNewSearch = false) => {
   }
 
   isLoading.value = true;
-  console.log(`📡 요청 시작: 페이지 ${pageNumber.value}`);
 
   const sendData = {
     category: searchType.value,
     keyword: searchKeyword.value,
     pageNumber: pageNumber.value,
-    status: activeStatus.value === 'open' ? 'active' : 'resolved',
+    status: activeStatus.value === 'open' ? 'active' : 'resolved', 
+    detail_status: filterstatus.value, 
     sortOrder: filterSort.value,
     severity: filterSeverity.value,
     line_name: filterLine.value,
@@ -228,7 +256,6 @@ const fetchIssues = async (isNewSearch = false) => {
     const newItems = resp.data.incidentList || [];
     const total = resp.data.cnt || 0;
 
-    // 데이터 합치기
     if (pageNumber.value === 0) {
       issues.value = newItems;
     } else {
@@ -236,50 +263,39 @@ const fetchIssues = async (isNewSearch = false) => {
     }
 
     totalCount.value = total;
-    
-    // 3. 마지막 페이지 여부 판단 (전체 개수와 비교)
     hasMore.value = issues.value.length < total;
 
-    // 4. 성공적으로 가져왔을 때만 다음 페이지 번호 미리 증가
     if (hasMore.value) {
       pageNumber.value++;
     }
-
-    console.log(`✅ 결과: 현재 ${issues.value.length}개 / 전체 ${total}개 (다음 페이지: ${pageNumber.value})`);
-
   } catch (err) {
-    console.error("데이터 로드 실패:", err);
+    console.error("로드 실패:", err);
   } finally {
-    // 서버 부하와 중복 요청을 막기 위해 약간의 딜레이 후 로딩 해제
-    setTimeout(() => {
-      isLoading.value = false;
-    }, 300);
+    setTimeout(() => { isLoading.value = false; }, 300);
   }
 };
 
-// --- 스크롤 이벤트 ---
 const handleScroll = () => {
   if (isLoading.value || !hasMore.value) return;
-
   const { scrollHeight, scrollTop, clientHeight } = document.documentElement;
-  // 바닥에서 100px 정도 여유 있을 때 호출
   if (Math.ceil(scrollTop + clientHeight) >= scrollHeight - 100) {
     fetchIssues();
   }
 };
 
-// --- 기타 기능 함수들 ---
 const onSearch = () => fetchIssues(true);
 const onStationChange = () => fetchIssues(true);
 const changeStatus = (status) => { 
   if (activeStatus.value === status) return;
-  activeStatus.value = status; 
+  activeStatus.value = status;
+  // ✅ 탭 바꿀 때 필터값 초기화
+  filterstatus.value = '';
   fetchIssues(true);
 };
 
 const resetFilter = () => {
   searchKeyword.value = ''; filterSeverity.value = ''; filterLine.value = '';
-  filterStation.value = ''; filterSort.value = '';
+  filterStation.value = ''; filterSort.value = ''; filterstatus.value = '';
   fetchIssues(true);
 };
 
@@ -328,24 +344,19 @@ const goToCreatePage = () => emit('change-view', 'Createinsident');
 const goToDetail = (id) => emit('change-view', 'IssueDetail', id);
 const handleClickOutside = (e) => { if (!e.target.closest('.bulk-menu-item')) activeBulkMenu.value = null; };
 
-// --- Lifecycle & Watch ---
 watch(filterLine, () => {
-  filterStation.value = ''; // 호선 바뀌면 역 초기화
+  filterStation.value = '';
   fetchIssues(true);
 });
 
 onMounted(async () => {
   window.addEventListener('mousedown', handleClickOutside);
   window.addEventListener('scroll', handleScroll);
-  
   try {
     const res = await axios.get('http://localhost:9000/get_allstations');
     allStations.value = res.data;
-  } catch (err) {
-    console.error("초기 데이터 로드 실패:", err);
-  }
-  
-  fetchIssues(true); // 첫 페이지 로드
+  } catch (err) {}
+  fetchIssues(true);
 });
 
 onUnmounted(() => {
@@ -353,7 +364,9 @@ onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll);
 });
 </script>
+
 <style scoped>
+/* 기존 스타일 그대로 유지 (생략) */
 .issue-container { max-width: 95%; margin: 20px auto; font-family: 'Pretendard', sans-serif; }
 .header-section { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
 .search-wrapper { display: flex; align-items: center; flex: 1; background: #f6f8fa; border-radius: 24px; padding: 8px 20px; border: 1px solid #d1d5da; }
@@ -367,15 +380,66 @@ onUnmounted(() => {
 .filter-left { display: flex; align-items: center; gap: 15px; }
 .bulk-check-wrapper { display: flex; align-items: center; padding-right: 5px; }
 .main-checkbox { width: 16px; height: 50px; cursor: pointer; }
-.status-tabs-container { display: flex; position: relative; gap: 15px; }
+.status-tabs-container {  margin-right: 20px; display: flex; position: relative; gap: 15px; }
 .status-tab { display: flex; align-items: center; gap: 8px; padding: 15px 5px; cursor: pointer; color: #586069; font-size: 14px; z-index: 1; }
 .status-tab.active { color: #24292e; font-weight: bold; }
 .tab-indicator { position: absolute; bottom: 0; height: 3px; transition: all 0.3s ease; }
 .dot { width: 8px; height: 8px; border-radius: 50%; }
 .open-dot { background-color: #2ecc71; }
 .close-dot { background-color: #e74c3c; }
-.sort-group { display: flex; align-items: center; gap: 5px; }
-.sort-group select { border: 1px solid transparent; outline: none; background: transparent; color: #586069; font-size: 13px; cursor: pointer; padding: 10px 5px; max-width: 110px; }
+.sort-group { display: flex; align-items: center; gap: 8px; }
+.sort-group select {
+  border: 1px solid #d1d5da;
+  border-radius: 4px;
+  background: #fff;
+  color: #24292e;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+/* ===== 필터 select 기본 리셋 ===== */
+.sort-group select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  background: transparent;
+  border: none;
+  outline: none;
+
+  padding: 6px 28px 6px 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #24292e;
+
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+  position: relative;
+}
+
+/* hover 시만 살짝 배경 */
+.sort-group select:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* focus 시만 은은하게 */
+.sort-group select:focus {
+  background: rgba(0, 0, 0, 0.07);
+}
+
+/* ▼ 화살표 직접 넣기 */
+.sort-group {
+  position: relative;
+}
+
+.sort-group select {
+  background-image: url("data:image/svg+xml;utf8,<svg fill='%23666' height='20' viewBox='0 0 20 20' width='20' xmlns='http://www.w3.org/2000/svg'><path d='M5.5 7l4.5 5 4.5-5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 14px;
+}
+
 .bulk-label { font-size: 12px; color: #c69026; font-weight: bold; }
 .cancel-bulk { background: #fff; border: 1px solid #d1d5da; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; }
 .issue-list { list-style: none; padding: 0; margin: 0; }
@@ -384,94 +448,25 @@ onUnmounted(() => {
 .issue-item.is-selected { background-color: #fffdef; }
 .item-checkbox { margin-right: 15px; display: flex; transform: scale(1.2); align-items: center; }
 .issue-main { flex: 1; min-width: 0; }
-.issue-title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: nowrap; overflow: hidden; }
+.issue-title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
 .title-text { font-size: 16px; font-weight: 600; color: #24292e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 50%; }
-.badge-group { display: flex; gap: 4px; flex-shrink: 0; }
-.badge { padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; color: white; white-space: nowrap; }
+.badge-group { display: flex; gap: 4px; }
+.badge { padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; color: white; }
 .badge.severity.critical { background-color: #EE0000; }
 .badge.severity.major { background-color: #F89B00; }
 .badge.severity.minor { background-color: #17F000; }
-.badge.station { background-color: #444; }
 .display-box.line-1호선 { background-color: #2a317c; } .display-box.line-2호선 { background-color: #2fae35; }
 .display-box.line-3호선 { background-color: #ff6000; } .display-box.line-4호선 { background-color: #1a97dd; }
 .display-box.line-5호선 { background-color: #822fe1; } .display-box.line-6호선 { background-color: #ae4908; }
 .display-box.line-7호선 { background-color: #636b10; } .display-box.line-8호선 { background-color: #e6265b; }
 .display-box.line-9호선 { background-color: #bdb092; }
 .issue-sub-row { font-size: 12px; color: #586069; }
-.comment-count { display: flex; align-items: center; gap: 4px; color: #586069; margin-left: 10px; flex-shrink: 0; }
-.status-text { font-weight: 800; font-size: 13px; flex-shrink: 0; }
-.empty { text-align: center; padding: 50px; color: #586069; border: 1px solid #d1d5da; border-top: none; }
-.loading-trigger, .end-trigger { text-align: center; padding: 20px; font-size: 14px; color: #586069; }
-
-/* 일괄 수정 메뉴 스타일 */
+.status-text { font-weight: 800; font-size: 13px; }
+.empty { text-align: center; padding: 50px; color: #586069; border: 1px solid #d1d5da; }
 .bulk-menu-item { position: relative; display: inline-block; }
-
-.bulk-toggle-btn {
-  background: #fff;
-  border: 1px solid #d1d5da;
-  padding: 5px 12px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.bulk-toggle-btn:hover { background: #f6f8fa; }
-
-.bulk-dropdown {
-  position: absolute;
-  top: calc(100% + 5px);
-  left: 0;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-  z-index: 1001;
-  min-width: 120px;
-}
-
-/* 위치 선택기는 창이 넓으므로 오른쪽 정렬 */
-.bulk-dropdown.location-picker {
-  left: auto;
-  right: 0;
-}
-
-.menu-item {
-  padding: 10px 15px;
-  font-size: 13px;
-  cursor: pointer;
-  border-bottom: 1px solid #f1f1f1;
-  text-align: left;
-}
+.bulk-toggle-btn { background: #fff; border: 1px solid #d1d5da; padding: 5px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+.bulk-dropdown { position: absolute; top: calc(100% + 5px); left: 0; background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 1001; min-width: 120px; }
+.menu-item { padding: 10px 15px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f1f1f1; }
 .menu-item:hover { background: #f0f7ff; color: #0969da; }
-.menu-item:last-child { border-bottom: none; }
-
-/* 기존 필터바와 간격 맞춤 */
-.sort-group { display: flex; align-items: center; gap: 8px; }
-
-
-.reset-btn {
-  background: #fff;
-  border: 1px solid #d1d5da;
-  padding: 5px 12px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #586069;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  transition: 0.2s;
-}
-
-.reset-btn:hover {
-  background-color: #f6f8fa;
-  color: #24292e;
-  border-color: #1b1f23;
-}
-
-/* 일괄 수정 모드일 때는 리셋 버튼숨기기 */
-.bulk-mode .reset-btn {
-display: none; 
-}
+.reset-btn { background: #fff; border: 1px solid #d1d5da; padding: 5px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; }
 </style>
