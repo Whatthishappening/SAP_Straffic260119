@@ -1,96 +1,116 @@
 <template>
   <div class="mypage-wrapper">
     <div class="mypage-header">
-      <h2 class="title">정보 수정</h2>
-      <div class="btn-group">
-        <button class="save-btn" @click="update_user">저장</button>
-        <button class="cancel-btn" @click="$emit('change-view', 'my')">취소</button>
+      <div class="header-content">
+        <h2 class="title">정보 수정</h2>
+        <div class="btn-group">
+          <button class="save-btn" @click="update_user">저장하기</button>
+          <button class="cancel-btn" @click="$emit('change-view', 'my')">취소</button>
+        </div>
       </div>
     </div>
 
     <div class="info-section">
-      <h3 class="section-subtitle">- 직원 정보 수정</h3>
-      <div class="info-container">
-        <ul class="user-info-list">
-          <li>
-            <span class="bullet">●</span>
-            <span class="label">이름 :</span>
-            <input type="text" class="edit-input readonly" v-model="user_name" readonly />
-          </li>
-          <li>
-            <span class="bullet">●</span>
-            <span class="label">ID :</span>
-            <input type="text" class="edit-input readonly" v-model="user_id" readonly />
-          </li>
-          <li>
-            <span class="bullet">●</span>
-            <span class="label" style="color: #e74c3c;">현재 PW 확인 :</span>
-            <input type="password" class="edit-input" v-model="current_pw" placeholder="변경 시에만 입력하세요" />
-        
-           </li>
-          <li v-if="current_pw.trim() !== ''">
-  <span class="bullet">●</span>
-  <span class="label">새 PW :</span>
-  <div class="pw-input-wrapper">
-    <input type="password" class="edit-input" v-model="user_pw" placeholder="본인 확인용 비밀번호 입력" />
-    <p class="pw-guide">
-      * 8~16자 이내, 영문/숫자/특수문자 조합 (ID와 동일 불가)
-    </p>
-  </div>
-</li>
-      <li>
-  <span class="bullet">●</span>
-  <span class="label">E-mail :</span>
-  <div class="email-row">
-    <div class="email-id-box">
-      <input v-model.trim="email_id" type="text" class="edit-input email-input" />
-    </div>
-    <span class="at">@</span>
-    <div class="email-domain-box">
-      <input v-if="email_domain_select === 'direct'" 
-             v-model.trim="email_domain_direct" 
-             type="text" class="edit-input email-input" placeholder="직접 입력" />
-      <select v-else v-model="email_domain_select" class="edit-input email-select">
-        <option value="naver.com">naver.com</option>
-        <option value="gmail.com">gmail.com</option>
-        <option value="daum.net">daum.net</option>
-        <option value="direct">직접 입력</option>
-      </select>
-    </div>
-    <button v-if="email_domain_select === 'direct'" 
-            @click="email_domain_select = 'naver.com'" 
-            class="reset-domain">X</button>
-  </div>
-</li>
-          <li class="route-container">
-  <div class="route-header">
-    <span class="bullet">●</span>
-    <span class="label">담당 노선 정보</span>
-  </div>
-  
-  <div class="route-selector-card">
-    <div class="current-selection-info">
-      <span class="info-label">현재 설정된 구역 :</span>
-      <div v-if="selectedSubway.line_name" class="selection-badge">
-        <span class="badge-line">{{ selectedSubway.line_name }}</span>
-        <span class="badge-station">{{ selectedSubway.station_name }}</span>
+      <div class="section-top">
+        <p class="section-desc">보안을 위해 비밀번호 변경 시 현재 비밀번호 확인이 필요합니다.</p>
       </div>
-      <span v-else class="no-selection">노선과 역을 선택해주세요.</span>
-    </div>
-    
-    <div class="selector-wrapper">
-      <SubwaySelector @update-selection="handleSubwayChange" />
-    </div>
-    <p class="selector-tip">* 수정 시 아래 셀렉트 박스에서 새로운 호선과 역을 선택하세요.</p>
-  </div>
-</li>
-        </ul>
+      
+      <div class="info-table">
+        <div class="table-row">
+          <div class="table-label">
+            <span class="bullet">●</span> 이름
+          </div>
+          <div class="table-value">
+            <input type="text" class="edit-input readonly" v-model="user_name" readonly />
+          </div>
+        </div>
+
+        <div class="table-row">
+          <div class="table-label">
+            <span class="bullet">●</span> 아이디(ID)
+          </div>
+          <div class="table-value">
+            <input type="text" class="edit-input readonly" v-model="user_id" readonly />
+          </div>
+        </div>
+
+        <div class="table-row">
+          <div class="table-label highlight-label">
+            <span class="bullet">●</span> 현재 PW 확인
+          </div>
+          <div class="table-value">
+            <input type="password" class="edit-input" v-model="current_pw" placeholder="정보 변경 시 입력하세요" />
+            <span class="input-tip">* 본인 확인을 위해 입력이 필요합니다.</span>
+          </div>
+        </div>
+
+        <div class="table-row" v-if="current_pw.trim() !== ''">
+          <div class="table-label">
+            <span class="bullet">●</span> 새 비밀번호
+          </div>
+          <div class="table-value">
+            <div class="pw-input-wrapper">
+              <input type="password" class="edit-input" v-model="user_pw" placeholder="새 비밀번호 입력" />
+              <p class="pw-guide">* 8~16자 이내, 영문/숫자/특수문자 조합 (ID와 동일 불가)</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-row">
+          <div class="table-label">
+            <span class="bullet">●</span> 이메일
+          </div>
+          <div class="table-value">
+            <div class="email-row">
+              <input v-model.trim="email_id" type="text" class="edit-input email-id" />
+              <span class="at">@</span>
+              <div class="email-domain-group">
+                <input v-if="email_domain_select === 'direct'" 
+                       v-model.trim="email_domain_direct" 
+                       type="text" class="edit-input email-domain" placeholder="직접 입력" />
+                <select v-else v-model="email_domain_select" class="edit-input email-select">
+                  <option value="naver.com">naver.com</option>
+                  <option value="gmail.com">gmail.com</option>
+                  <option value="daum.net">daum.net</option>
+                  <option value="direct">직접 입력</option>
+                </select>
+                <button v-if="email_domain_select === 'direct'" 
+                        @click="email_domain_select = 'naver.com'" 
+                        class="reset-domain">✕</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-row route-row">
+          <div class="table-label">
+            <span class="bullet">●</span> 담당 노선 수정
+          </div>
+          <div class="table-value">
+            <div class="route-selector-container">
+              <div class="current-selection-box">
+                <span class="info-tag">현재 선택 :</span>
+                <div v-if="selectedSubway.line_name" class="selection-badge">
+                  <span class="badge-line">{{ selectedSubway.line_name }}</span>
+                  <span class="badge-station">{{ selectedSubway.station_name }}</span>
+                </div>
+                <span v-else class="no-selection">노선과 역을 선택해주세요.</span>
+              </div>
+              
+              <div class="selector-content">
+                <SubwaySelector @update-selection="handleSubwayChange" />
+                <p class="selector-tip">* 아래 목록에서 변경할 호선과 역을 클릭하세요.</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script>
+/* 스크립트 로직, 변수명, import 변경 전혀 없음 */
 import axios from 'axios';
 import SubwaySelector from './SubwaySelector.vue';
 
@@ -106,7 +126,7 @@ export default {
       email_domain_select: "naver.com",
       email_domain_direct: "",
       selectedSubway: { line_name: '', station_id: '', station_name: '' },
-      originData: null // 수정 여부 판단용 원본 저장소
+      originData: null 
     };
   },
   watch: {
@@ -116,7 +136,6 @@ export default {
       }
     }
   },
-
   computed: {
     fullEmail() {
       const domain = this.email_domain_select === 'direct' 
@@ -125,7 +144,6 @@ export default {
       return this.email_id && domain ? `${this.email_id}@${domain}` : '';
     }
   },
-
   mounted() {
     const sessionData = sessionStorage.getItem("user_info") || sessionStorage.getItem("login");
     const login = JSON.parse(sessionData);
@@ -136,7 +154,6 @@ export default {
       return;
     }
 
-    // 1. 먼저 데이터를 화면 변수에 싹 채웁니다.
     this.user_id = login.user_id || login.id || '';
     this.user_name = login.user_name || login.name || '';
     
@@ -158,18 +175,14 @@ export default {
     this.selectedSubway.station_name = login.station_name || '';
     this.selectedSubway.station_id = login.station_id || '';
 
-    // 2. ★데이터가 다 채워진 '후'에 현재 상태를 원본으로 딱 저장합니다!
     this.saveOrigin();
   },
-
   methods: {
     handleSubwayChange(data) {
       this.selectedSubway.line_name = data.line_name;
       this.selectedSubway.station_id = data.station.station_id;
       this.selectedSubway.station_name = data.station.station_name;
     },
-
-    // 원본 데이터를 캡처하는 함수
     saveOrigin() {
       this.originData = JSON.stringify({
         email_id: this.email_id,
@@ -179,9 +192,7 @@ export default {
         station_id: this.selectedSubway.station_id
       });
     },
-
     async update_user() {
-      // 1. 수정 내용이 있는지 체크 (비번 입력 X + 다른 정보 원본과 동일)
       const currentData = JSON.stringify({
         email_id: this.email_id,
         email_domain_select: this.email_domain_select,
@@ -195,7 +206,6 @@ export default {
         return;
       }
 
-      // 2. 비밀번호 유효성 검사 함수 정의
       const validatePassword = (pw, id, currentPw) => {
         if (pw.length < 8 || pw.length > 16) {
           alert("비밀번호는 8자 이상 16자 이하로 설정해주세요.");
@@ -217,7 +227,6 @@ export default {
         return true;
       };
 
-      // 3. 필수 입력값 체크
       if (!this.selectedSubway.line_name || this.selectedSubway.line_name === "미선택") {
         alert("노선을 선택해주세요.");
         return;
@@ -233,7 +242,6 @@ export default {
         return; 
       }
 
-      // 4. 전송 데이터 구성
       const updateData = {
         user_id: this.user_id,
         user_email: this.fullEmail,
@@ -243,7 +251,6 @@ export default {
         passwordChange: false
       };
    
-      // 5. 비번 변경 시 시도
       if (this.user_pw.trim() !== "") {
         if (!this.current_pw.trim()) {
           alert("현재 비밀번호를 입력해주세요.");
@@ -257,7 +264,6 @@ export default {
         updateData.passwordChange = true;
       }
 
-      // 6. 서버 전송
       try {
         const resp = await axios.post('http://localhost:9000/update_user', updateData);
         if (resp.data === "PW_ERROR") {
@@ -290,130 +296,78 @@ export default {
 </script>
 
 <style scoped>
-/* 기존 스타일 그대로 유지 */
-.section-title { font-size: 13px; margin: 14px 0 6px; color: #666; }
-.mypage-wrapper { width: 100%; background-color: #ffffff; color: #333; }
-.mypage-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 25px; background-color: #eeeeee; border-bottom: 1px solid #ddd; }
-.title { font-size: 20px; font-weight: 700; }
-.btn-group { display: flex; gap: 8px; }
-.save-btn { background-color: #3f417e; color: #fff; border: none; padding: 5px 22px; border-radius: 20px; cursor: pointer; }
-.cancel-btn { background-color: #999; color: #fff; border: none; padding: 5px 22px; border-radius: 20px; cursor: pointer; }
-.info-section { padding: 30px; }
-.section-subtitle { font-size: 18px; font-weight: 700; margin-bottom: 25px; }
-.user-info-list { list-style: none; padding: 0; }
-.user-info-list li { 
+/* 전체 레이아웃 (조회 페이지와 통일) */
+.mypage-wrapper { width: 100%; min-height: 100%; background-color: #fff; font-family: 'Pretendard', sans-serif; }
+
+.mypage-header { padding: 10px 40px; border-bottom: 1px solid #eef0f3; }
+.header-content { display: flex; justify-content: space-between; align-items: center; }
+.title { font-size: 35px; font-weight: 700; color: #1a1c23; margin: 0; }
+
+.btn-group { display: flex; gap: 10px; }
+.save-btn { background-color: #3f417e; color: #fff; border: none; padding: 10px 30px; border-radius: 4px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.cancel-btn { background-color: #f1f3f5; color: #495057; border: none; padding: 10px 30px; border-radius: 4px; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+.info-section { padding: 40px; }
+.section-top { margin-bottom: 30px; }
+.section-subtitle { font-size: 18px; font-weight: 700; color: #3f417e; margin: 0 0 8px 0; }
+.section-desc { font-size: 14px; color: #888; margin: 0; }
+
+/* 테이블 스타일 폼 */
+.info-table { border-top: 2px solid #3f417e; }
+.table-row { display: flex; align-items: center; border-bottom: 1px solid #edeff2; min-height: 75px; }
+.table-label { width: 220px; background-color: #f9fafc; height: 100%; padding: 20px 25px; font-weight: 700; color: #4a5568; display: flex; align-items: center; }
+.table-value { padding: 15px 30px; flex: 1; }
+
+.bullet { font-size: 6px; margin-right: 12px; color: #3f417e; }
+.highlight-label { color: #e74c3c; }
+
+/* 입력 필드 공통 */
+.edit-input { 
+  height: 40px; 
+  padding: 0 15px; 
+  border: 1px solid #ddd; 
+  border-radius: 4px; 
+  width: 320px; 
+  font-size: 15px; 
+  transition: border-color 0.2s;
+}
+.edit-input:focus { border-color: #3f417e; outline: none; }
+.edit-input.readonly { background-color: #f5f5f5; color: #888; cursor: not-allowed; border-color: #eee; }
+
+.input-tip { font-size: 12px; color: #999; margin-left: 15px; }
+
+/* 비밀번호 영역 */
+.pw-input-wrapper { display: flex; flex-direction: column; gap: 8px; }
+.pw-guide { font-size: 12px; color: #e74c3c; margin: 0; }
+
+/* 이메일 영역 */
+.email-row { display: flex; align-items: center; gap: 10px; }
+.email-id { width: 180px; }
+.at { color: #999; font-weight: 600; }
+.email-domain-group { display: flex; align-items: center; gap: 8px; }
+.email-select { width: 180px; }
+.email-domain { width: 180px; }
+.reset-domain { background: #adb5bd; color: #fff; border: none; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 12px; line-height: 1; }
+
+/* 노선 선택 영역 */
+.route-row { align-items: flex-start; }
+.route-selector-container { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 700px; }
+
+.current-selection-box { 
   display: flex; 
   align-items: center; 
-  margin-bottom: 28px; 
-  font-size: 16px; 
+  gap: 15px; 
+  padding: 15px; 
+  background: #f8f9fa; 
+  border-radius: 6px; 
+  border: 1px dashed #ced4da;
 }
+.info-tag { font-size: 14px; font-weight: 600; color: #666; }
 
+.selection-badge { display: inline-flex; border-radius: 4px; overflow: hidden; border: 1px solid #3f417e; }
+.badge-line { background: #3f417e; color: #fff; padding: 4px 12px; font-size: 13px; font-weight: 700; }
+.badge-station { background: #fff; color: #3f417e; padding: 4px 15px; font-size: 14px; font-weight: 700; }
 
-.pw-input-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 10px; 
-}
-.pw-guide {
-  font-size: 12px;
-  color: #e74c3c;
-  margin: 0;
-  padding-left: 2px;
-}
-
-
-.email-row {
-  display: flex;
-  align-items: center;
-  gap: 10px; 
-}
-
-
-.route-container { 
-  flex-direction: column; 
-  align-items: flex-start !important; 
-  margin-top: 35px; 
-  border-top: 1px solid #eee; 
-  padding-top: 25px;
-}
-.route-selector-card {
-  width: 100%;
-  max-width: 550px;
-  background-color: #fcfcfc;
-  border: 1px solid #e1e1e1;
-  border-radius: 12px;
-  padding: 20px;
-  margin-top: 10px;
-  margin-left: 20px; /* 라벨과 정렬 맞춤 */
-}
-/* 현재 선택 정보 바 */
-.current-selection-info {
-  display: flex;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 1px dashed #ddd;
-}
-.info-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #555;
-  margin-right: 12px;
-}
-/* 선택된 역 뱃지 스타일 */
-.selection-badge {
-  display: inline-flex;
-  align-items: center;
-  background-color: #3f417e;
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-.badge-line {
-  background-color: #2c2e5a;
-  color: #fff;
-  padding: 4px 10px;
-  font-size: 13px;
-  font-weight: 700;
-}
-.badge-station {
-  background-color: #fff;
-  color: #3f417e;
-  padding: 4px 12px;
-  font-size: 14px;
-  font-weight: 700;
-  border: 1px solid #3f417e;
-  border-left: none;
-  border-radius: 0 6px 6px 0;
-}
-.no-selection {
-  font-size: 14px;
-  color: #999;
-  font-style: italic;
-}
-/* 셀렉터 영역 */
-.selector-wrapper {
-  margin-bottom: 10px;
-}
-.selector-tip {
-  font-size: 12px;
-  color: #3498db;
-  margin: 8px 0 0 2px;
-  font-weight: 500;
-}
-.bullet { font-size: 8px; margin-right: 12px; }
-.label { 
-  font-weight: 700; 
-  min-width: 130px; 
-  margin-right: 15px; 
-}
-.edit-input { padding: 5px 10px; border: 1px solid #ccc; border-radius: 4px; width: 250px; font-size: 15px; }
-.edit-input.readonly { background-color: #f5f5f5; border: 1px solid #eee; color: #888; cursor: not-allowed; }
-.route-container { flex-direction: column; align-items: flex-start !important; margin-top: 10px; }
-/* 기존 스타일 유지 및 보정 */
-.route-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 5px;
-}
+.selector-content { padding: 10px 0; }
+.selector-tip { font-size: 13px; color: #3498db; margin-top: 10px; font-weight: 500; }
 </style>
