@@ -29,7 +29,7 @@
         </div>
         <div class="header-info-row">
           <div class="sub-nav-text">
-            <span class="dot">●</span> 실시간 관리 시스템 접속 중 : {{ userData.line_name }} 모니터링
+            <span class="dot-icon"></span> 실시간 관리 시스템 접속 중 : {{ userData.line_name }} 모니터링
           </div>
         </div>
       </div>
@@ -465,4 +465,28 @@ html::-webkit-scrollbar { height: 0px; }
 }
 
 .header-mypageimage { width: 32px; height: 32px; border-radius: 50%; margin-left: 10px; vertical-align: middle; }
+
+/* 녹색 원 아이콘 */
+.dot-icon {
+  display: inline-block;
+  width: 20px;        /* 아이콘 크기 */
+  height: 20px;
+  background-color: #2ecc71; /* 선명한 녹색 */
+  border-radius: 50%; /* 완벽한 원형 */
+  margin-right: 8px;  /* 텍스트와의 간격 */
+  vertical-align: middle; /* 텍스트 중앙에 정렬 */
+  
+  /* 아이콘다운 입체감을 위해 살짝 그림자 추가 */
+  box-shadow: 0 0 5px rgba(46, 204, 113, 0.5);
+  
+  /* 실제 가동중인 느낌을 주려면 아래 애니메이션을 켜두세요 (취향껏) */
+  animation: blink 1.5s infinite ease-in-out;
+}
+
+/* 깜빡이는 효과 (너무 화려하면 삭제 가능) */
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
 </style>
