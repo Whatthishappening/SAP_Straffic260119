@@ -107,7 +107,16 @@
             <option value="asc">Oldest</option>
           </select>
 
-          <button v-if="activeStatus === 'close'" type="button" class="reset-btn" @click="resetFilter">정렬리셋</button>
+         <Transition name="fade-slide">
+  <button 
+    v-if="isFilterActive" 
+    type="button" 
+    class="reset-btn" 
+    @click="resetFilter"
+  >
+    정렬리셋
+  </button>
+</Transition>
         </template>
       </div>
     </div>
@@ -162,7 +171,10 @@ import axios from 'axios'
 import StationSimpleSelector from './StationSimpleSelector.vue';
 
 const emit = defineEmits(['go-create', 'change-view']) 
-
+const isFilterActive = computed(() => {
+  return searchKeyword.value || filterstatus.value || filterSeverity.value || 
+         filterLine.value || filterStation.value || filterSort.value;
+});
 // --- 날짜 포맷팅 ---
 const formatDate = (dateStr) => {
   if (!dateStr) return '';
@@ -396,6 +408,10 @@ onUnmounted(() => {
   font-size: 13px;
   cursor: pointer;
   padding: 4px 8px;
+max-width: 90px; /* ✅ 적절한 너비로 제한 (원하시는 만큼 조절하세요) */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* ✅ 글자가 길면 ... 으로 표시 */
 }
 /* ===== 필터 select 기본 리셋 ===== */
 .sort-group select {
@@ -439,7 +455,25 @@ onUnmounted(() => {
   background-position: right 6px center;
   background-size: 14px;
 }
+/* 애니메이션 진입/진출 효과 */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.3s ease-out;
+}
 
+/* 시작 상태 (숨겨졌을 때) */
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateX(10px); 
+}
+
+/* 끝 상태 (나타났을 때) */
+.fade-slide-enter-to,
+.fade-slide-leave-from {
+  opacity: 1;
+  transform: translateX(0);
+}
 .bulk-label { font-size: 12px; color: #c69026; font-weight: bold; }
 .cancel-bulk { background: #fff; border: 1px solid #d1d5da; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; }
 .issue-list { list-style: none; padding: 0; margin: 0; }
@@ -468,5 +502,6 @@ onUnmounted(() => {
 .bulk-dropdown { position: absolute; top: calc(100% + 5px); left: 0; background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 1001; min-width: 120px; }
 .menu-item { padding: 10px 15px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f1f1f1; }
 .menu-item:hover { background: #f0f7ff; color: #0969da; }
-.reset-btn { background: #fff; border: 1px solid #d1d5da; padding: 5px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+.reset-btn { background: #fff; border: 1px solid #d1d5da; padding: 5px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; margin-left: 4px;
+  white-space: nowrap; /* 글자가 줄바꿈되지 않도록 고정 */ }
 </style>
