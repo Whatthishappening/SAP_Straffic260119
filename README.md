@@ -86,23 +86,25 @@
 
 ---
 ### 🔑 환경 설정
+
 npm:
-''' 
-    npm install
-'''
+ 
+    'npm install'
+
 application.properties
 
 spring:
   
   datasource:
-'''    
-    url: jdbc:postgres://localhost:5432/postgres
     
-    username: postgres
+    'url: jdbc:postgres://localhost:5432/postgres'
+    
+    'username: postgres'
    
-    password: 1234
-'''
+    'password: 1234'
+
 ---
+
 ### 화면
 
 <img src="./doc/화면캡처/1. 로그인.png" width="500px" alt="로그인">
