@@ -59,7 +59,7 @@
 
     <div id="olduser_list_container" class="mypage_wrapper">
      <div class="mypage_header">
-  <h2 class="title">기존 가입 계정</h2>
+  <h2 class="title">기존 가입 계정 목록</h2>
   
   <div class="search_area_center">
     <input type="text" v-model="search_keyword" placeholder="ID 또는 이름 검색" @keyup.enter="search_users" class="search_input">
