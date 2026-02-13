@@ -8,7 +8,7 @@
 
       <div class="report-area">
         <a :href="powerBIUrl" target="_blank" rel="noopener noreferrer" class="report-link">
-          <img src="@/assets/통계분석.png" alt="통계분석 대시보드" class="report-img" />
+          <img src="@/assets/통계분석.gif" alt="통계분석 대시보드" class="report-img" />
           
           <div class="execution-overlay">
             <div class="play-btn-wrapper">
