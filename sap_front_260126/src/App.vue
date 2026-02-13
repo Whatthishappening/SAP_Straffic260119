@@ -328,6 +328,12 @@ body {
   font-size: 2.5ch;
 }
 
+/* 마우스가 올라갔을 때(Hover) 효과 */
+.nav-item:hover {
+  background-color: #e9ecef; 
+  color: #000;              
+  padding-left: 20px;        
+}
 .nav-item { padding: 12px; margin-bottom: 5px; cursor: pointer; border-radius: 8px; color: #555; transition: 0.2s; }
 
 /* 5. 컨텐츠 */
