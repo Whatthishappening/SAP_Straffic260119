@@ -119,6 +119,11 @@ select * from storage.local_amenities;
 select * from storage.incident;
 select * from storage.locker_usage order by locker_usage.created_at desc
 
+--update storage.user set user_name = 'Master' where user_id ='admin'
+
+
+select * from storage.user;
+
 insert into storage.weather
 (tm, wd, ws, ta, hm, rn)
 values('202602051800', 108.0, 25.0, 4.4, -9.0, -9.0)
