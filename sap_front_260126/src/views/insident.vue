@@ -378,7 +378,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 기존 스타일 그대로 유지 (생략) */
 .issue-container { max-width: 95%; margin: 20px auto; font-family: 'Pretendard', sans-serif; }
 .header-section { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
 .search-wrapper { display: flex; align-items: center; flex: 1; background: #f6f8fa; border-radius: 24px; padding: 8px 20px; border: 1px solid #d1d5da; }
@@ -485,6 +484,7 @@ max-width: 90px; /* ✅ 적절한 너비로 제한 (원하시는 만큼 조절�
 .issue-title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
 .title-text { font-size: 16px; font-weight: 600; color: #24292e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 50%; }
 .badge-group { display: flex; gap: 4px; }
+.badge.station { background-color: #24292e; border: 1px solid #000; }
 .badge { padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; color: white; }
 .badge.severity.critical { background-color: #EE0000; }
 .badge.severity.major { background-color: #F89B00; }
