@@ -123,9 +123,9 @@ import ChartDataLabels from 'chartjs-plugin-datalabels';
 
 const emit = defineEmits(['go-list']);
 const dashboardData = ref(null);
-const userLine = ref(""); 
+const userLine = ref("");
 const userAuth = ref("");
-const hasWeeklyData = ref(false); 
+const hasWeeklyData = ref(false);
 const seoulWeather = ref({ tm: '', wd: 0, ws: 0, ta: 0, hm: 0, rn: 0 });
 
 let lockerChart = null;
@@ -140,29 +140,35 @@ const fetchData = async () => {
     
     const user = JSON.parse(loginData);
     userAuth.value = String(user.auth);
+    
+    if (user.station_id) {
+      const rawId = String(user.station_id);
+      userLine.value = rawId.replace(/[^0-9]/g, '').charAt(0);
+    }
 
-    const res = await axios.get('http://localhost:9000/get_dashboard', { 
-      params: { auth: userAuth.value, station_id: user.station_id, user_id: user.user_id } 
+    const res = await axios.get('http://localhost:9000/get_dashboard', {
+      params: {
+        auth: userAuth.value,
+        station_id: user.station_id,
+        user_id: user.user_id
+      }
     });
 
     if (res.data) {
       dashboardData.value = res.data;
-      seoulWeather.value = {
-        tm: res.data.weather_tm || '', ta: res.data.weather_ta || 0, 
-        ws: res.data.weather_ws || 0, hm: res.data.weather_hm || 0, 
-        rn: res.data.weather_rn || 0, wd: res.data.weather_wd || 0
-      };
       
-      if (userAuth.value === '2') {
-        /* [보강] station_id에서 'P' 등 문자를 제거하고 첫 번째 숫자만 추출 */
-        const rawId = String(res.data.station_id || user.station_id);
-        userLine.value = rawId.replace(/[^0-9]/g, '').charAt(0);
-      }
+      seoulWeather.value = {
+        tm: res.data.weather_tm || '', ta: res.data.weather_ta || 0,
+        ws: res.data.weather_ws || 0, hm: res.data.weather_hm || 0,
+        rn: res.data.weather_rn || 0, wd: res.data.weather_rn || 0
+      };
       
       await nextTick();
       initCharts();
     }
-  } catch (err) { console.error("데이터 갱신 실패:", err); }
+  } catch (err) {
+    console.error("데이터 갱신 실패:", err);
+  }
 };
 
 const initCharts = () => {
@@ -178,8 +184,8 @@ const initCharts = () => {
   if (ctxUsed) {
     const t = Number(data.total_lockers || 0);
     const u = Number(data.used_lockers || 0);
-    lockerChart = new Chart(ctxUsed, { 
-      type: 'doughnut', 
+    lockerChart = new Chart(ctxUsed, {
+      type: 'doughnut',
       data: { datasets: [{ data: t === 0 ? [0, 1] : [u, t - u], backgroundColor: ['#36A2EB', '#f2f2f2'], borderWidth: 0 }] },
       options: { cutout: '70%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
@@ -191,15 +197,15 @@ const initCharts = () => {
     const labels = ['08시', '11시', '14시', '17시', '20시', '23시'];
     const rawRate = Number(data.hour_usedlocker || 0);
     const fallback = [rawRate * 0.8, rawRate * 0.9, rawRate, rawRate * 1.1, rawRate * 1.05, rawRate];
-    hourlyChart = new Chart(ctxHourly, { 
-      type: 'line', 
-      data: { labels, datasets: [{ label: '이용률', data: fallback, borderColor: '#36A2EB', backgroundColor: 'rgba(54, 162, 235, 0.2)', fill: true, tension: 0.4 }] }, 
+    hourlyChart = new Chart(ctxHourly, {
+      type: 'line',
+      data: { labels, datasets: [{ label: '이용률', data: fallback, borderColor: '#36A2EB', backgroundColor: 'rgba(54, 162, 235, 0.2)', fill: true, tension: 0.4 }] },
       plugins: [ChartDataLabels],
-      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { datalabels: { align: 'top', formatter: (v) => Math.round(v) + '%' } } } 
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { datalabels: { align: 'top', formatter: (v) => Math.round(v) + '%' } } }
     });
   }
 
-  // 3. 주간 장애 (막대+선 모두 표시)
+  // 3. 주간 장애 (정렬 및 매핑)
   const ctxWeekly = document.getElementById('weeklyChart')?.getContext('2d');
   const weeklyData = data.weekly_issue || [];
   if (ctxWeekly) {
@@ -208,9 +214,9 @@ const initCharts = () => {
     const matchKeys = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(); d.setDate(d.getDate() - i);
-      const yyyy = d.getFullYear();
       const mm = String(d.getMonth() + 1).padStart(2, '0');
       const dd = String(d.getDate()).padStart(2, '0');
+      const yyyy = d.getFullYear();
       labels.push(`${mm}/${dd}`);
       matchKeys.push(`${yyyy}-${mm}-${dd}`);
     }
@@ -219,28 +225,38 @@ const initCharts = () => {
     if (userAuth.value === '1') {
       datasets.push({
         type: 'bar', label: '전체 합계', backgroundColor: '#E0E0E0', order: 2,
-        data: matchKeys.map(k => weeklyData.filter(d => (d.day || d.event_date || "").includes(k)).reduce((a, c) => a + Number(c.count || 0), 0))
+        data: matchKeys.map(k => weeklyData.filter(d => (d.event_date || d.day || "").includes(k)).reduce((a, c) => a + Number(c.count || 0), 0))
       });
       ['1','2','3','4','5','6','7','8','9'].forEach(ln => {
         datasets.push({
           type: 'line', label: `${ln}호선`, borderColor: getLineColor(ln), tension: 0.3, order: 1, borderWidth: 2,
-          data: matchKeys.map(k => weeklyData.filter(d => (d.day || d.event_date || "").includes(k) && String(d.line_num || d.line_name).includes(ln)).reduce((a, c) => a + Number(c.count || 0), 0))
+          data: matchKeys.map(k => weeklyData.filter(d => (d.event_date || d.day || "").includes(k) && String(d.line_num || d.line_name).includes(ln)).reduce((a, c) => a + Number(c.count || 0), 0))
         });
       });
     } else {
+      // 담당자 모드: 막대(호선전체) 뒤로, 라인(내역) 앞으로
       datasets.push({
-        type: 'bar', label: `${userLine.value}호선 전체`, backgroundColor: getLineColor(userLine.value) + '80', order: 2,
-        data: matchKeys.map(k => weeklyData.filter(d => (d.day || d.event_date || "").includes(k) && String(d.line_num || d.line_name).includes(userLine.value)).reduce((a, c) => a + Number(c.count || 0), 0))
+        type: 'bar',
+        label: `${userLine.value}호선 전체`,
+        backgroundColor: getLineColor(userLine.value) + '80',
+        order: 2,
+        data: matchKeys.map(k => {
+          const found = weeklyData.filter(d => (d.event_date || d.day || "").includes(k));
+          return found.reduce((acc, cur) => acc + Number(cur.total_count || 0), 0);
+        })
       });
       datasets.push({
-        type: 'line', label: '본인 역', borderColor: '#FF6384', borderWidth: 4, tension: 0.3, order: 1,
+        type: 'line',
+        label: '본인 역',
+        borderColor: '#FF6384',
+        borderWidth: 4,
+        order: 1,
         data: matchKeys.map(k => {
-          const found = weeklyData.find(d => (d.day || d.event_date || "").includes(k) && String(d.station_id) === String(data.station_id));
-          return found ? Number(found.count) : 0;
+          const found = weeklyData.filter(d => (d.event_date || d.day || "").includes(k));
+          return found.reduce((acc, cur) => acc + Number(cur.count || 0), 0);
         })
       });
     }
-
     weeklyChartInstance = new Chart(ctxWeekly, {
       data: { labels, datasets },
       options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: true } } }
@@ -282,6 +298,7 @@ const goWeatherDetail = () => window.open("https://weather.naver.com/map/", '_bl
 onMounted(() => { fetchData(); refreshTimer = setInterval(fetchData, 30000); });
 onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer); });
 </script>
+
 
 <style scoped>
 .dashboard-container { padding: 30px; background: #f4f7fa; min-height: 100vh; font-family: 'Pretendard', sans-serif; }

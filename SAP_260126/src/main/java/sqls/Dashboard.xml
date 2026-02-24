@@ -126,39 +126,33 @@
 <select id="getWeeklyIncidents" resultType="map">
     <choose>
         <when test='auth == "1"'>
-    SELECT 
-        target_line AS line_name,
-        event_date,
-        COUNT(*) AS count
-    FROM (
-        SELECT DISTINCT  /* 중복 카운팅 방지 */
-            i.incident_id,
-            TO_CHAR(i.create_at, 'YYYY-MM-DD') AS event_date,
-            COALESCE(
-                NULLIF(i.incident_line_name, ''), 
-                NULLIF(l.line_name, ''),
-                NULLIF(i.incident_station_name, ''),
-                '미분류'
-            ) AS target_line
-        FROM storage.incident i
-        LEFT JOIN storage.local l ON TRIM(i.incident_station_name) = TRIM(l.station_name)
-        WHERE i.create_at >= CURRENT_DATE - INTERVAL '7 days'
-    ) AS sub
-    WHERE target_line IS NOT NULL AND target_line != ''
-    GROUP BY target_line, event_date
-    ORDER BY event_date ASC, target_line ASC
-</when>
-
-        <otherwise>
             SELECT 
-                incident_line_name AS line_name,
+                TRIM(incident_line_name) AS line_name,
                 TO_CHAR(create_at, 'YYYY-MM-DD') AS event_date,
                 COUNT(*) AS count
             FROM storage.incident
-            WHERE incident_station_id = #{station_id}
-              AND create_at >= CURRENT_DATE - INTERVAL '7 days'
-              AND incident_line_name IS NOT NULL
-            GROUP BY incident_line_name, event_date
+            WHERE create_at >= CURRENT_DATE - INTERVAL '6 days'
+            GROUP BY TRIM(incident_line_name), TO_CHAR(create_at, 'YYYY-MM-DD')
+            ORDER BY event_date ASC
+        </when>
+
+        <otherwise>
+            SELECT 
+                TRIM(I.incident_line_name) AS line_name, 
+                TO_CHAR(I.create_at, 'YYYY-MM-DD') AS event_date,
+                COUNT(*) AS total_count,
+                COUNT(CASE 
+                    WHEN TRIM(I.incident_station_id) LIKE '%' || (SELECT station_name FROM storage.local WHERE station_id = #{station_id} LIMIT 1) || '%' 
+                    OR TRIM(I.incident_station_id) = #{station_id}
+                    THEN 1 
+                END) AS count
+            FROM storage.incident I
+            WHERE 
+                TO_CHAR(I.create_at, 'YYYY-MM-DD') >= TO_CHAR(CURRENT_DATE - 6, 'YYYY-MM-DD')
+                AND TRIM(I.incident_line_name) = (
+                    SELECT line_name FROM storage.local WHERE station_id = #{station_id} LIMIT 1
+                )
+            GROUP BY TRIM(I.incident_line_name), TO_CHAR(I.create_at, 'YYYY-MM-DD')
             ORDER BY event_date ASC
         </otherwise>
     </choose>
