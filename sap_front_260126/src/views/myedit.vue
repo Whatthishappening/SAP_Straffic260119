@@ -285,12 +285,23 @@ export default {
         alert('통신 오류 발생!');
       }
     },
-    updateSession(data) {
-      const key = sessionStorage.getItem("user_info") ? "user_info" : "login";
-      const old = JSON.parse(sessionStorage.getItem(key));
+   updateSession(data) {
+  // 대시보드가 참조하는 두 가지 키 후보군
+  const keys = ["login", "user_info"];
+  
+  keys.forEach(key => {
+    const rawData = sessionStorage.getItem(key);
+    if (rawData) {
+      const old = JSON.parse(rawData);
+      // 기존 데이터 위에 수정된 내용(station_id 등)을 덮어씀
       const updated = { ...old, ...data };
       sessionStorage.setItem(key, JSON.stringify(updated));
     }
+  });
+  
+  // 콘솔에 찍어보면 리로드 전 데이터가 제대로 들어갔는지 확인할 수 있습니다.
+  console.log("세션 동기화 완료:", data);
+}
   }
 }
 </script>
